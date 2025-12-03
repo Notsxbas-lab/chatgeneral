@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: chatgeneral-web
+    env: node
+    plan: free
+    repo: https://github.com/gamaappcuenta-netizen/chatgeneral
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start

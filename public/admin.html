@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panel Admin - Chat Global</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{
+        --primary:#00b4d8;
+        --primary-dark:#0096c7;
+        --accent:#ff006e;
+        --danger:#d32f2f;
+        --warning:#ffa500;
+        --success:#00d084;
+        --bg-light:#f0f9ff;
+        --bg-white:#ffffff;
+        --text-primary:#0a3d62;
+        --text-secondary:#5a6c7d;
+        --border:#e0e6ed;
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%;margin:0;font-family:Poppins,system-ui,-apple-system,"Segoe UI",sans-serif;background:#f8fbff}
+      body{display:flex;flex-direction:column}
+
+      .admin-header{background:linear-gradient(90deg,var(--danger) 0%,#b71c1c 100%);color:white;padding:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+      .admin-header h1{margin:0;font-size:1.5rem}
+      .admin-header p{margin:0;font-size:0.9rem;opacity:0.9}
+      .admin-back-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.5);color:white;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:600;text-decoration:none;transition:all 0.2s}
+      .admin-back-btn:hover{background:rgba(255,255,255,0.3)}
+
+      .admin-container{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+      .admin-panel{background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:24px;display:flex;flex-direction:column}
+      .admin-panel h2{margin:0 0 20px;color:var(--text-primary);font-size:1.3rem;border-bottom:2px solid var(--border);padding-bottom:12px}
+
+      .admin-controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+      .admin-controls input{flex:1;min-width:150px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit}
+      .admin-controls button{padding:10px 16px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:all 0.2s}
+      .admin-controls button:hover{background:var(--primary-dark)}
+      .admin-controls button.danger{background:var(--danger)}
+      .admin-controls button.danger:hover{background:#b71c1c}
+      .admin-controls button.warning{background:var(--warning)}
+      .admin-controls button.warning:hover{background:#ff8c00}
+
+      .users-table{width:100%;border-collapse:collapse;font-size:0.9rem}
+      .users-table th{background:var(--bg-light);padding:12px;text-align:left;font-weight:600;color:var(--text-primary);border-bottom:2px solid var(--border)}
+      .users-table td{padding:12px;border-bottom:1px solid var(--border)}
+      .users-table tr:hover{background:var(--bg-light)}
+
+      .user-row{display:flex;align-items:center;gap:12px}
+      .user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:0.9rem}
+      .user-info{flex:1}
+      .user-info .name{font-weight:600;color:var(--text-primary)}
+      .user-info .details{font-size:0.8rem;color:var(--text-secondary)}
+
+      .action-buttons{display:flex;gap:6px}
+      .action-buttons button{padding:6px 10px;font-size:0.75rem;border:none;border-radius:4px;cursor:pointer;transition:all 0.2s;font-family:inherit;font-weight:600}
+      .action-buttons .edit-name{background:var(--primary);color:white}
+      .action-buttons .edit-name:hover{background:var(--primary-dark)}
+      .action-buttons .kick{background:var(--warning);color:white}
+      .action-buttons .kick:hover{background:#ff8c00}
+      .action-buttons .ban{background:var(--danger);color:white}
+      .action-buttons .ban:hover{background:#b71c1c}
+
+      .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+      .stat-card{background:var(--bg-light);border-radius:8px;padding:16px;text-align:center}
+      .stat-card .value{font-size:2rem;font-weight:700;color:var(--primary)}
+      .stat-card .label{font-size:0.9rem;color:var(--text-secondary);margin-top:4px}
+
+      .status-badge{display:inline-block;padding:4px 8px;border-radius:4px;font-size:0.75rem;font-weight:600}
+      .status-badge.online{background:rgba(0,208,132,0.2);color:var(--success)}
+      .status-badge.banned{background:rgba(211,47,47,0.2);color:var(--danger)}
+
+      .empty-state{padding:40px 20px;text-align:center;color:var(--text-secondary)}
+      .empty-state p{margin:0}
+
+      .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:5000}
+      .modal-overlay.active{display:flex}
+      .modal-dialog{background:white;padding:32px;border-radius:12px;min-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+      .modal-dialog h3{margin:0 0 16px;color:var(--text-primary)}
+      .modal-dialog input{width:100%;padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px;font-family:inherit}
+      .modal-dialog input:focus{outline:none;border-color:var(--primary)}
+      .modal-buttons{display:flex;gap:12px;justify-content:flex-end}
+      .modal-buttons button{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-family:inherit;transition:all 0.2s}
+      .modal-buttons .cancel{background:var(--border);color:var(--text-primary)}
+      .modal-buttons .cancel:hover{background:#ccc}
+      .modal-buttons .confirm{background:var(--primary);color:white}
+      .modal-buttons .confirm:hover{background:var(--primary-dark)}
+
+      .toast{position:fixed;bottom:20px;right:20px;padding:16px 24px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:none;z-index:6000;animation:slideIn 0.3s ease}
+      .toast.show{display:block}
+      .toast.success{border-left:4px solid var(--success)}
+      .toast.error{border-left:4px solid var(--danger)}
+      .toast.warning{border-left:4px solid var(--warning)}
+      @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+      @media (max-width:768px){
+        .admin-container{grid-template-columns:1fr}
+        .modal-dialog{min-width:90vw}
+        .stats{grid-template-columns:1fr}
+      }
+
+      #adminLoginOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:10000}
+      #adminLoginOverlay.hidden{display:none}
+      .admin-login-box{background:white;padding:48px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;max-width:400px}
+      .admin-login-box h1{margin:0 0 12px;color:var(--danger);font-size:2rem}
+      .admin-login-box p{margin:0 0 32px;color:var(--text-secondary);font-size:0.95rem}
+      .admin-login-box input{width:100%;padding:14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;margin-bottom:16px}
+      .admin-login-box input:focus{outline:none;border-color:var(--danger)}
+      .admin-login-box button{width:100%;padding:14px;background:var(--danger);color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;transition:all 0.2s;font-family:inherit}
+      .admin-login-box button:hover{background:#b71c1c}
+      .login-error{color:var(--danger);font-size:0.9rem;margin-bottom:16px;display:none}
+      .login-error.show{display:block}
+
+      .admin-users-list{max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:12px}
+      .admin-user-item{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid var(--border)}
+      .admin-user-item:last-child{border-bottom:none}
+      .admin-user-info{flex:1}
+      .admin-user-info .name{font-weight:600;color:var(--text-primary)}
+      .admin-user-info .role{font-size:0.8rem;color:var(--text-secondary);margin-top:4px}
+      .role-badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:0.75rem;font-weight:600}
+      .role-badge.dueno{background:rgba(211,47,47,0.2);color:#d32f2f}
+      .role-badge.admin{background:rgba(255,87,34,0.2);color:#ff5722}
+      .role-badge.mod{background:rgba(255,152,0,0.2);color:#ff9800}
+      .role-badge.mod-junior{background:rgba(33,150,243,0.2);color:#2196f3}
+      .admin-user-actions{display:flex;gap:6px}
+      .admin-user-actions button{padding:6px 12px;font-size:0.75rem;border:none;border-radius:4px;cursor:pointer;transition:all 0.2s}
+      .role-select{padding:6px;border:1px solid var(--border);border-radius:4px;font-size:0.75rem;cursor:pointer}
+      .promote-btn{background:var(--primary);color:white}
+      .promote-btn:hover{background:var(--primary-dark)}
+      .demote-btn{background:#ff9800;color:white}
+      .demote-btn:hover{background:#f57c00}
+    </style>
+  </head>
+  <body>
+    <div id="adminLoginOverlay">
+      <div class="admin-login-box">
+        <h1>🔐</h1>
+        <p>Ingresa la contraseña del administrador</p>
+        <div class="login-error" id="loginError">Contraseña incorrecta</div>
+        <input id="adminLoginPassword" type="password" placeholder="Contraseña" autofocus />
+        <button onclick="submitAdminLogin()">Acceder</button>
+      </div>
+    </div>
+
+    <div class="admin-header">
+      <div>
+        <h1>🔑 Panel Administrador</h1>
+        <p>Control total del chat global</p>
+      </div>
+      <a href="/" class="admin-back-btn">← Volver al Chat</a>
+    </div>
+
+    <div class="admin-container">
+      <div class="admin-panel">
+        <h2>📊 Estadísticas</h2>
+        <div class="stats">
+          <div class="stat-card">
+            <div class="value" id="totalUsers">0</div>
+            <div class="label">Usuarios Conectados</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="totalBanned">0</div>
+            <div class="label">IPs Baneadas</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="totalRooms">1</div>
+            <div class="label">Salas Activas</div>
+          </div>
+        </div>
+
+        <h2 style="margin-top:24px">👥 Usuarios Conectados</h2>
+        <div class="admin-controls">
+          <input id="searchUser" type="text" placeholder="Buscar usuario...">
+          <button onclick="refreshUsers()">🔄 Actualizar</button>
+        </div>
+        
+        <div id="usersContainer" style="flex:1;overflow-y:auto">
+          <div class="empty-state">
+            <p>Cargando usuarios...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h2>⚙️ Controles Globales</h2>
+        
+        <div style="margin-bottom:24px">
+          <h3 style="margin:0 0 12px;color:var(--text-primary)">Estado del Chat</h3>
+          <div id="chatStatusDisplay" style="padding:12px;background:var(--bg-light);border-radius:6px;font-weight:600;color:var(--text-primary);margin-bottom:12px">
+            Estado: Conectando...
+          </div>
+          <div class="admin-controls" style="flex-direction:column">
+            <button id="startChatBtn" style="width:100%;padding:12px">▶ Iniciar Chat</button>
+            <button id="stopChatBtn" style="width:100%;padding:12px" class="danger">⏹ Parar Chat</button>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:24px">
+          <h3 style="margin:0 0 12px;color:var(--text-primary)">Gestión de IPs Baneadas</h3>
+          <div class="admin-controls">
+            <input id="banIpInput" type="text" placeholder="IP a banear..." style="flex:1">
+            <button id="banIpBtn" class="danger">🚫 Banear</button>
+          </div>
+          <div id="bannedIpsList" style="margin-top:12px;max-height:250px;overflow-y:auto"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
+          <h3 style="margin:0 0 12px;color:var(--text-primary)">Contraseña Admin</h3>
+          <div class="admin-controls">
+            <input id="adminPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)">
+            <button id="setPasswordBtn">🔐 Establecer</button>
+          </div>
+          <p id="passwordStatus" style="font-size:0.85rem;color:var(--text-secondary);margin:8px 0">Estado: Sin contraseña</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para cambiar nombre -->
+    <div id="changeNameModal" class="modal-overlay">
+      <div class="modal-dialog">
+        <h3>Cambiar nombre de usuario</h3>
+        <input id="newNameInput" type="text" placeholder="Nuevo nombre" maxlength="30">
+        <div class="modal-buttons">
+          <button class="cancel" onclick="closeModal()">Cancelar</button>
+          <button class="confirm" onclick="confirmChangeName()">Cambiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast para notificaciones -->
+    <div id="toast" class="toast">
+      <span id="toastMessage"></span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/admin.js"></script>
+  </body>
+</html>

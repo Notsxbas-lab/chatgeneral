@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat Global - Habla con el mundo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{
+        --primary:#00b4d8;
+        --primary-dark:#0096c7;
+        --accent:#ff006e;
+        --bg-light:#f0f9ff;
+        --bg-white:#ffffff;
+        --text-primary:#0a3d62;
+        --text-secondary:#5a6c7d;
+        --border:#e0e6ed;
+        --success:#00d084;
+        --me-bg:#e0f7ff;
+        --other-bg:#ffffff;
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%;margin:0;font-family:Poppins,system-ui,-apple-system,"Segoe UI",sans-serif;background:#f8fbff}
+      body{display:flex;align-items:center;justify-content:center;padding:12px}
+
+      .container{width:100%;max-width:1000px;height:calc(100vh - 24px);background:var(--bg-white);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.08);display:flex;overflow:hidden}
+
+      .sidebar{width:280px;background:linear-gradient(180deg,var(--bg-light) 0%,#e3f2fd 100%);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;overflow-y:auto}
+      .sidebar-header{padding:20px;border-bottom:1px solid var(--border);text-align:center}
+      .sidebar-header h2{margin:0;color:var(--text-primary);font-size:1.3rem}
+      .sidebar-header p{margin:8px 0 0;color:var(--text-secondary);font-size:0.85rem}
+
+      .rooms-section{flex:1;overflow-y:auto;padding:12px}
+      .room-label{padding:8px 12px;color:var(--text-secondary);font-size:0.75rem;text-transform:uppercase;font-weight:600;margin-top:12px;margin-bottom:4px}
+      .room-item{padding:10px 12px;margin-bottom:6px;background:var(--bg-white);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;color:var(--text-primary);font-size:0.9rem}
+      .room-item:hover{background:var(--primary);color:white;border-color:var(--primary)}
+      .room-item.active{background:var(--primary);color:white;border-color:var(--primary);font-weight:600}
+
+      .create-room{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}
+      .create-room input{flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:inherit}
+      .create-room button{padding:8px 12px;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem}
+
+      .main{flex:1;display:flex;flex-direction:column}
+
+      header{padding:16px 20px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,var(--primary) 0%,var(--primary-dark) 100%);color:white;display:flex;justify-content:space-between;align-items:center}
+      header h1{margin:0;font-size:1.2rem}
+      header .connection{font-size:0.85rem;padding:4px 12px;background:rgba(255,255,255,0.2);border-radius:12px}
+      header .connection.online{background:rgba(0,208,132,0.3)}
+
+      #messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#fafbff;transition:all 0.2s}
+      #messages.bg-custom{background-size:cover;background-position:center;background-attachment:fixed}
+      #messages.drag-over{background:#e3f2fd;border:2px dashed var(--primary)}
+      #messages::-webkit-scrollbar{width:6px}
+      #messages::-webkit-scrollbar-track{background:transparent}
+      #messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+      .drop-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3rem;opacity:0;pointer-events:none;transition:opacity 0.2s}
+      #messages.drag-over .drop-hint{opacity:1}
+
+      .message-row{display:flex;gap:8px;margin-bottom:4px;animation:slideIn 0.3s ease}
+      @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+      .message-row.me{justify-content:flex-end}
+      .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0}
+      .bubble{max-width:60%;padding:10px 14px;border-radius:12px;word-wrap:break-word;box-shadow:0 2px 4px rgba(0,0,0,0.06)}
+      .bubble.me{background:var(--me-bg);color:var(--text-primary);border-radius:12px 4px 12px 12px}
+      .bubble.other{background:var(--other-bg);color:var(--text-primary);border:1px solid var(--border);border-radius:4px 12px 12px 12px}
+      .bubble-meta{font-size:0.75rem;color:var(--text-secondary);margin-bottom:4px;font-weight:500}
+      .bubble-img{max-width:100%;border-radius:8px;margin-top:8px}
+      .system{align-self:center;color:var(--text-secondary);font-size:0.85rem;padding:8px 12px;background:#f0f5ff;border-radius:8px;text-align:center}
+
+      #form{display:flex;gap:10px;padding:16px;background:white;border-top:1px solid var(--border)}
+      #input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit}
+      #input:focus{outline:none;border-color:var(--primary)}
+      #send{background:var(--primary);color:white;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.2s}
+      #send:hover{background:var(--primary-dark)}
+
+      .tools{display:flex;gap:8px;padding:16px}
+      .tool-btn{background:var(--bg-light);border:1px solid var(--border);padding:10px;border-radius:8px;cursor:pointer;font-size:1rem;transition:all 0.2s}
+      .tool-btn:hover{background:var(--primary);color:white;border-color:var(--primary)}
+
+      #overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:fadeIn 0.3s ease}
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      #nameModal{background:white;padding:32px;border-radius:16px;min-width:350px;box-shadow:0 20px 60px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:16px}
+      #nameModal h2{margin:0;color:var(--text-primary);font-size:1.4rem}
+      #nameModal p{margin:0;color:var(--text-secondary);font-size:0.9rem}
+      #nameModal input{padding:12px;border:2px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit}
+      #nameModal input:focus{outline:none;border-color:var(--primary)}
+      #nameModal button{padding:12px;background:var(--primary);color:white;border:none;border-radius:8px;font-weight:600;font-size:0.95rem;cursor:pointer;transition:all 0.2s}
+      #nameModal button:hover{background:var(--primary-dark)}
+
+      .profile-btn{background:transparent;border:2px solid white;color:white;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.2s}
+      .profile-btn:hover{background:rgba(255,255,255,0.1)}
+
+      #profileOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+      #profileModal{background:white;padding:32px;border-radius:16px;min-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:16px}
+      #profileModal h2{margin:0;color:var(--text-primary);font-size:1.4rem}
+      .profile-preview{display:flex;align-items:center;gap:16px}
+      .profile-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.5rem;overflow:hidden;object-fit:cover}
+      .profile-avatar img{width:100%;height:100%;object-fit:cover}
+      .profile-info{flex:1}
+      .profile-info input{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;font-family:inherit}
+      .upload-section{margin-bottom:16px}
+      .upload-section label{display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;font-weight:600}
+      .upload-btn{display:inline-block;padding:10px 16px;background:var(--bg-light);border:2px dashed var(--border);border-radius:8px;cursor:pointer;font-weight:600;color:var(--text-primary);transition:all 0.2s}
+      .upload-btn:hover{background:var(--primary);color:white;border-color:var(--primary)}
+      .color-picker{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+      .color-option{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all 0.2s}
+      .color-option:hover{transform:scale(1.1)}
+      .color-option.selected{border-color:var(--text-primary);box-shadow:0 0 0 2px white}
+      .color-option{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all 0.2s}
+      .color-option.selected{border-color:var(--text-primary);transform:scale(1.1)}
+      .emoji-input{padding:8px;border:1px solid var(--border);border-radius:6px;font-size:1.2rem;text-align:center}
+      .profile-buttons{display:flex;gap:10px}
+      .profile-buttons button{flex:1;padding:10px;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.2s}
+      .profile-buttons .save{background:var(--primary);color:white}
+      .profile-buttons .cancel{background:var(--border);color:var(--text-primary)}
+      .profile-buttons .save:hover{background:var(--primary-dark)}
+      .profile-buttons .cancel:hover{background:#ccc}
+
+      #kickedModal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:10000}
+      #kickedModal.show{display:flex}
+      .kicked-content{background:white;padding:48px;border-radius:16px;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.3);max-width:400px}
+      .kicked-icon{font-size:4rem;margin-bottom:16px;animation:shake 0.5s ease}
+      @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+      .kicked-content h2{margin:0 0 12px;color:#d32f2f;font-size:1.6rem}
+      .kicked-content p{margin:0 0 24px;color:var(--text-secondary);font-size:0.95rem;line-height:1.5}
+      .kicked-btn{padding:12px 32px;background:#d32f2f;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;transition:all 0.2s}
+      .kicked-btn:hover{background:#b71c1c}
+
+      #emojiPicker{position:fixed;bottom:100px;right:20px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:12px;width:300px;max-height:300px;overflow-y:auto;display:none;z-index:1000;animation:popIn 0.2s ease}
+      #emojiPicker.show{display:grid}
+      @keyframes popIn{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+      .emoji-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+      .emoji-btn{width:100%;aspect-ratio:1;border:none;background:var(--bg-light);border-radius:8px;font-size:1.5rem;cursor:pointer;transition:all 0.2s;padding:0}
+      .emoji-btn:hover{background:var(--primary);transform:scale(1.15)}
+      .profile-buttons .save:hover{background:var(--primary-dark)}
+      .profile-buttons .cancel{background:var(--border);color:var(--text-primary)}
+      .profile-buttons .cancel:hover{background:#d0d7e0}
+
+      @media (max-width:768px){
+        .sidebar{display:none}
+        .container{height:calc(100vh - 24px)}
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>🌍 Chat</h2>
+          <p id="userDisplay">Anónimo</p>
+        </div>
+        <div class="rooms-section" id="roomsContainer"></div>
+        <div class="create-room">
+          <input id="newRoomInput" placeholder="Nueva sala..." />
+          <button id="createRoomBtn">Crear</button>
+        </div>
+      </div>
+
+      <div class="main">
+        <header>
+          <h1 id="currentRoom">#global</h1>
+          <div style="display:flex;gap:12px;align-items:center">
+            <button class="profile-btn" id="profileBtn" style="display:none">👤 Perfil</button>
+            <div class="connection" id="status">● Desconectado</div>
+          </div>
+        </header>
+
+        <div class="tools">
+          <button class="tool-btn" id="attachBtn" title="Adjuntar imagen">📎 Imagen</button>
+          <button class="tool-btn" id="emojiBtn" title="Insertar emoji">😊 Emoji</button>
+        </div>
+
+        <div id="messages">
+          <div class="drop-hint">📸</div>
+        </div>
+
+        <form id="form">
+          <input id="input" autocomplete="off" placeholder="Escribe tu mensaje..." />
+          <button id="send" type="submit">Enviar</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div id="nameModal">
+        <h2>Bienvenido</h2>
+        <p>Elige un nombre para hablar con otros usuarios</p>
+        <input id="username" placeholder="Tu nombre público" maxlength="30" />
+        <button id="setName">Entrar al chat</button>
+      </div>
+    </div>
+
+    <div id="profileOverlay">
+      <div id="profileModal">
+        <h2>Mi Perfil</h2>
+        <div class="profile-preview">
+          <div class="profile-avatar" id="profileAvatarPreview">IK</div>
+          <div class="profile-info">
+            <input id="profileName" placeholder="Tu nombre" maxlength="30" />
+            <input id="profileEmoji" class="emoji-input" placeholder="😊" maxlength="2" />
+          </div>
+        </div>
+        <div class="upload-section">
+          <label>Foto de perfil</label>
+          <label class="upload-btn" for="profileImageInput">📸 Subir foto</label>
+          <input id="profileImageInput" type="file" accept="image/*" style="display:none" />
+        </div>
+        <div class="upload-section">
+          <label>Color del avatar</label>
+          <div class="color-picker" id="colorPicker"></div>
+        </div>
+        <div class="upload-section">
+          <label>Fondo del chat</label>
+          <div class="color-picker" id="bgColorPicker"></div>
+        </div>
+        <div class="profile-buttons">
+          <button class="save" id="saveProfile">Guardar</button>
+          <button class="cancel" id="closeProfile">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <input id="fileInput" type="file" accept="image/*" style="display:none" />
+
+    <div id="emojiPicker">
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+
+    <div id="kickedModal">
+      <div class="kicked-content">
+        <div class="kicked-icon">⛔</div>
+        <h2>Has sido expulsado</h2>
+        <p>El administrador te ha expulsado del chat.</p>
+        <button class="kicked-btn" onclick="location.reload()">Volver al inicio</button>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/chat.js"></script>
+  </body>
+</html>
