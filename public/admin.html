@@ -248,8 +248,12 @@
             <span class="sidebar-icon">📈</span>
             <span class="sidebar-text">Análisis</span>
           </a>
-        </li>
-      </ul>
+        </li>        <li class="sidebar-item">
+          <a onclick="showSection('database')" class="sidebar-link">
+            <span class="sidebar-icon">💾</span>
+            <span class="sidebar-text">Base de Datos</span>
+          </a>
+        </li>      </ul>
     </aside>
 
     <div class="admin-container">
@@ -460,6 +464,49 @@
             <button id="setPasswordBtn">🔐 Establecer</button>
           </div>
           <p id="passwordStatus" style="font-size:0.9rem;color:var(--text-secondary);margin:0">Estado: Sin contraseña</p>
+        </div>
+      </div>
+
+      <!-- Sección Base de Datos -->
+      <div class="admin-section" id="section-database">
+        <h2>💾 Base de Datos Personal</h2>
+        <div style="background:var(--bg-light);padding:20px;border-radius:8px;margin-bottom:20px">
+          <h3 style="margin:0 0 16px;color:var(--text-primary)">Agregar Nuevo Registro</h3>
+          <div style="display:grid;gap:12px;grid-template-columns:1fr 1fr">
+            <input id="dbKey" type="text" placeholder="Clave/Título" style="padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+            <input id="dbValue" type="text" placeholder="Valor/Descripción" style="padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+            <select id="dbCategory" style="padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+              <option value="general">General</option>
+              <option value="notas">Notas</option>
+              <option value="config">Configuración</option>
+              <option value="usuarios">Usuarios</option>
+              <option value="otros">Otros</option>
+            </select>
+            <button onclick="addDatabaseRecord()" style="padding:10px;background:var(--success);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">➕ Agregar</button>
+          </div>
+        </div>
+
+        <div class="admin-controls" style="margin-bottom:16px">
+          <button onclick="loadDatabaseRecords()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer">🔄 Actualizar</button>
+        </div>
+
+        <div style="background:white;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+          <table class="users-table" id="databaseTable">
+            <thead>
+              <tr>
+                <th>Clave</th>
+                <th>Valor</th>
+                <th>Categoría</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="databaseTableBody">
+              <tr>
+                <td colspan="5" style="text-align:center;padding:20px;color:var(--text-secondary)">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

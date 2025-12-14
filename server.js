@@ -25,6 +25,8 @@ let rulesText = 'Bienvenido. Agrega las reglas desde el panel admin para que tod
 
 // Persistencia de datos
 const DATA_FILE = path.join(__dirname, 'chat-data.json');
+const DATABASE_FILE = path.join(__dirname, 'user-database.json');
+let userDatabase = [];
 
 function saveData() {
   const data = {
@@ -72,6 +74,30 @@ function loadData() {
 
 // Cargar datos al iniciar
 loadData();
+loadUserDatabase();
+
+function saveUserDatabase() {
+  try {
+    fs.writeFileSync(DATABASE_FILE, JSON.stringify(userDatabase, null, 2), 'utf8');
+    console.log('Base de datos guardada correctamente');
+  } catch (err) {
+    console.error('Error al guardar base de datos:', err);
+  }
+}
+
+function loadUserDatabase() {
+  try {
+    if (fs.existsSync(DATABASE_FILE)) {
+      userDatabase = JSON.parse(fs.readFileSync(DATABASE_FILE, 'utf8'));
+      console.log('Base de datos cargada:', userDatabase.length, 'registros');
+    } else {
+      userDatabase = [];
+    }
+  } catch (err) {
+    console.error('Error al cargar base de datos:', err);
+    userDatabase = [];
+  }
+}
 
 // Nuevas estructuras de datos
 const messageHistory = []; // Historial de mensajes (últimos 100)
@@ -203,6 +229,7 @@ io.on('connection', (socket) => {
       socket.join('admin');
       adminUsers.set(socket.id, { username: foundUsername, role: adminData.role });
       console.log('Admin autenticado:', foundUsername, 'con rol:', socket.adminRole);
+      socket.emit('databaseRecords', userDatabase);
       callback({ success: true });
       io.to('admin').emit('adminJoined', { username: foundUsername, role: socket.adminRole });
     } else {
@@ -854,6 +881,72 @@ socket.on('adminSetPassword', ({ password }) => {
   socket.on('stopLiveMonitoring', () => {
     if (!socket.isAdmin) return;
     socket.leave('live-monitor');
+  });
+
+  // ===== BASE DE DATOS PERSONAL =====
+  socket.on('addDatabaseRecord', ({ key, value, category }, cb) => {
+    if (!socket.isAdmin) {
+      cb && cb({ success: false, message: 'Acceso denegado' });
+      return;
+    }
+    
+    const record = {
+      _id: Date.now().toString(),
+      key: String(key).trim().substring(0, 100),
+      value: String(value).trim().substring(0, 500),
+      category: String(category || 'general').substring(0, 50),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    userDatabase.push(record);
+    saveUserDatabase();
+    
+    cb && cb({ success: true, record });
+    io.to('admin').emit('databaseRecords', userDatabase);
+  });
+
+  socket.on('getDatabaseRecords', (cb) => {
+    if (!socket.isAdmin) {
+      cb && cb({ success: false, records: [] });
+      return;
+    }
+    cb && cb({ success: true, records: userDatabase });
+  });
+
+  socket.on('updateDatabaseRecord', ({ id, value }, cb) => {
+    if (!socket.isAdmin) {
+      cb && cb({ success: false });
+      return;
+    }
+    
+    const record = userDatabase.find(r => r._id === id);
+    if (record) {
+      record.value = String(value).trim().substring(0, 500);
+      record.updatedAt = new Date().toISOString();
+      saveUserDatabase();
+      cb && cb({ success: true });
+      io.to('admin').emit('databaseRecords', userDatabase);
+    } else {
+      cb && cb({ success: false });
+    }
+  });
+
+  socket.on('deleteDatabaseRecord', ({ id }, cb) => {
+    if (!socket.isAdmin) {
+      cb && cb({ success: false });
+      return;
+    }
+    
+    const index = userDatabase.findIndex(r => r._id === id);
+    if (index !== -1) {
+      userDatabase.splice(index, 1);
+      saveUserDatabase();
+      cb && cb({ success: true });
+      io.to('admin').emit('databaseRecords', userDatabase);
+    } else {
+      cb && cb({ success: false });
+    }
   });
 });
 

@@ -1069,3 +1069,115 @@ function renderAnalytics() {
 }
 
 window.loadAnalytics = loadAnalytics;
+// ===== BASE DE DATOS PERSONAL =====
+let dbRecords = [];
+
+function addDatabaseRecord() {
+  const key = document.getElementById('dbKey')?.value.trim();
+  const value = document.getElementById('dbValue')?.value.trim();
+  const category = document.getElementById('dbCategory')?.value || 'general';
+  
+  if (!key || !value) {
+    showToast('Completa todos los campos', 'warning');
+    return;
+  }
+  
+  socket.emit('addDatabaseRecord', { key, value, category }, (response) => {
+    if (response.success) {
+      document.getElementById('dbKey').value = '';
+      document.getElementById('dbValue').value = '';
+      showToast(`Registro "${key}" agregado`, 'success');
+      loadDatabaseRecords();
+    } else {
+      showToast('Error al agregar registro', 'error');
+    }
+  });
+}
+
+function loadDatabaseRecords() {
+  socket.emit('getDatabaseRecords', (response) => {
+    if (response && response.records) {
+      dbRecords = response.records;
+      renderDatabaseRecords();
+    }
+  });
+}
+
+function renderDatabaseRecords() {
+  const tbody = document.getElementById('databaseTableBody');
+  if (!tbody) return;
+  
+  if (dbRecords.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-secondary)">No hay registros. Agrega uno nuevo.</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = dbRecords.map(record => {
+    const date = new Date(record.createdAt).toLocaleDateString('es-ES');
+    return `
+      <tr>
+        <td><strong>${record.key}</strong></td>
+        <td>${record.value}</td>
+        <td><span style="padding:2px 8px;background:var(--bg-light);border-radius:4px;font-size:0.8rem">${record.category}</span></td>
+        <td style="font-size:0.85rem;color:var(--text-secondary)">${date}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button onclick="editDatabaseRecord('${record._id}', '${record.key}')" style="padding:4px 8px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.75rem">✏️</button>
+            <button onclick="deleteDatabaseRecord('${record._id}', '${record.key}')" style="padding:4px 8px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.75rem">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function editDatabaseRecord(id, key) {
+  const record = dbRecords.find(r => r._id === id);
+  if (!record) return;
+  
+  const newValue = prompt(`Editar registro: ${key}`, record.value);
+  if (newValue === null) return;
+  
+  socket.emit('updateDatabaseRecord', { id, value: newValue }, (response) => {
+    if (response.success) {
+      showToast(`Registro "${key}" actualizado`, 'success');
+      loadDatabaseRecords();
+    } else {
+      showToast('Error al actualizar', 'error');
+    }
+  });
+}
+
+function deleteDatabaseRecord(id, key) {
+  if (!confirm(`¿Eliminar el registro "${key}"?`)) return;
+  
+  socket.emit('deleteDatabaseRecord', { id }, (response) => {
+    if (response.success) {
+      showToast(`Registro "${key}" eliminado`, 'success');
+      loadDatabaseRecords();
+    } else {
+      showToast('Error al eliminar', 'error');
+    }
+  });
+}
+
+// Cargar registros cuando se abre la sección
+socket.on('databaseRecords', (records) => {
+  dbRecords = records;
+  renderDatabaseRecords();
+});
+
+// Exponer funciones globales
+window.addDatabaseRecord = addDatabaseRecord;
+window.loadDatabaseRecords = loadDatabaseRecords;
+window.editDatabaseRecord = editDatabaseRecord;
+window.deleteDatabaseRecord = deleteDatabaseRecord;
+
+// Auto-cargar cuando se abre la sección
+const originalShowSection = window.showSection;
+window.showSection = function(sectionName) {
+  originalShowSection(sectionName);
+  if (sectionName === 'database') {
+    loadDatabaseRecords();
+  }
+};
