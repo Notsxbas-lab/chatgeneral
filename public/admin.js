@@ -481,8 +481,8 @@ function addAdminByName() {
   socket.emit('registerAdmin', { username, role });
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
-  setTimeout(() => loadAdminUsers(), 10mo ${role}`, 'success');
-  setTimeout(() => loadAdminUsers(), 500);
+  setTimeout(() => loadAdminUsers(), 1000);
+}
 }
 
 function showToast(message, type = 'info') {
