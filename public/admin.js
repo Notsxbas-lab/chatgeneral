@@ -200,6 +200,10 @@ socket.on('adminUsersList', (data) => {
   console.log('Received admin users data:', data);
   adminUsers = data.admins || [];
   console.log('Updated adminUsers:', adminUsers);
+  console.log('Admin users length:', adminUsers.length);
+  if (adminUsers.length === 0) {
+    console.warn('No admin users received from server!');
+  }
   renderAdminUsers(data.roles || ['Mod Junior', 'Mod', 'Admin', 'Dueño']);
 });
 

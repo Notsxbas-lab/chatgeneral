@@ -346,7 +346,11 @@ socket.on('adminSetPassword', ({ password }) => {
 
   // Obtener lista de administradores
   socket.on('getAdminUsers', () => {
-    if (!socket.isAdmin) return;
+    console.log('getAdminUsers request from socket:', socket.id, 'isAdmin:', socket.isAdmin);
+    if (!socket.isAdmin) {
+      console.log('Acceso denegado: usuario no es admin');
+      return;
+    }
     
     // Obtener admins registrados
     const adminList = Array.from(registeredAdmins.entries()).map(([username, data]) => ({
@@ -355,9 +359,14 @@ socket.on('adminSetPassword', ({ password }) => {
       role: data.role
     }));
     
+    const rolesArray = ['Mod Junior', 'Mod', 'Admin', 'Dueño'];
+    
+    console.log('Enviando admin list:', adminList);
     socket.emit('adminUsersList', {
       admins: adminList,
-      roles: Object.values(roles)
+      roles: rolesArray
+    });
+  });
     });
   });
 
