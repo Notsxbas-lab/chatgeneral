@@ -14,6 +14,7 @@ window.addEventListener('load', () => {
   if (sessionKey === 'true') {
     isLoggedIn = true;
     adminLoginOverlay.classList.add('hidden');
+    restoreAdminStateFromCache();
   }
 });
 
@@ -103,6 +104,95 @@ let selectedAdminForPassword = null;
 let hasPassword = false;
 let adminUsers = [];
 
+// Persistencia en sesión
+const STORAGE_KEYS = {
+  users: 'adminPanel_users',
+  bannedIps: 'adminPanel_bannedIps',
+  rooms: 'adminPanel_rooms',
+  chatRunning: 'adminPanel_chatRunning',
+  adminUsers: 'adminPanel_adminUsers',
+  adminRoles: 'adminPanel_adminRoles',
+  badWords: 'adminPanel_badWords',
+  messageHistory: 'adminPanel_messageHistory',
+  reports: 'adminPanel_reports'
+};
+const DEFAULT_ROLES = ['Mod Junior', 'Mod', 'Admin', 'Dueño'];
+
+function saveState(key, value) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn('No se pudo guardar estado', key, err);
+  }
+}
+
+function loadState(key, fallback = null) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn('No se pudo leer estado', key, err);
+    return fallback;
+  }
+}
+
+function restoreAdminStateFromCache() {
+  const cachedUsers = loadState(STORAGE_KEYS.users);
+  if (Array.isArray(cachedUsers)) {
+    users = cachedUsers;
+    renderUsers();
+  }
+
+  const cachedBanned = loadState(STORAGE_KEYS.bannedIps);
+  if (Array.isArray(cachedBanned)) {
+    bannedIps = cachedBanned;
+    renderBannedIps();
+  }
+
+  const cachedRooms = loadState(STORAGE_KEYS.rooms);
+  if (Array.isArray(cachedRooms)) {
+    rooms = new Set(cachedRooms);
+  }
+
+  const cachedChatRunning = loadState(STORAGE_KEYS.chatRunning);
+  if (typeof cachedChatRunning === 'boolean') {
+    chatRunning = cachedChatRunning;
+    updateChatStatus();
+  }
+
+  const cachedAdmins = loadState(STORAGE_KEYS.adminUsers);
+  const cachedRoles = loadState(STORAGE_KEYS.adminRoles, DEFAULT_ROLES);
+  if (Array.isArray(cachedAdmins) && cachedAdmins.length > 0) {
+    adminUsers = cachedAdmins;
+    renderAdminUsers(cachedRoles || DEFAULT_ROLES);
+  }
+
+  const cachedBadWords = loadState(STORAGE_KEYS.badWords);
+  if (Array.isArray(cachedBadWords)) {
+    badWordsList = cachedBadWords;
+    renderBadWords();
+  }
+
+  const cachedHistory = loadState(STORAGE_KEYS.messageHistory);
+  if (cachedHistory) {
+    const historyList = document.getElementById('messageHistoryList');
+    if (historyList) {
+      historyList.innerHTML = Array.isArray(cachedHistory) ? cachedHistory.join('') : cachedHistory;
+    }
+  }
+
+  const cachedReports = loadState(STORAGE_KEYS.reports);
+  if (cachedReports) {
+    const reportsList = document.getElementById('reportedMessagesList');
+    if (reportsList) {
+      reportsList.innerHTML = Array.isArray(cachedReports) ? cachedReports.join('') : cachedReports;
+    }
+  }
+
+  updateStats();
+}
+
 // Socket events
 socket.on('connect', () => {
   console.log('Admin conectado');
@@ -136,6 +226,10 @@ socket.on('adminData', (data) => {
   bannedIps = data.bannedIps || [];
   rooms = new Set(data.rooms || ['global']);
   chatRunning = data.chatRunning !== false;
+  saveState(STORAGE_KEYS.users, users);
+  saveState(STORAGE_KEYS.bannedIps, bannedIps);
+  saveState(STORAGE_KEYS.rooms, Array.from(rooms));
+  saveState(STORAGE_KEYS.chatRunning, chatRunning);
   
   updateStats();
   renderUsers();
@@ -145,6 +239,7 @@ socket.on('adminData', (data) => {
 
 socket.on('userConnected', (user) => {
   users.push(user);
+  saveState(STORAGE_KEYS.users, users);
   updateStats();
   renderUsers();
   showToast(`${user.username} se conectó`, 'success');
@@ -152,6 +247,7 @@ socket.on('userConnected', (user) => {
 
 socket.on('userDisconnected', (userId) => {
   users = users.filter(u => u.id !== userId);
+  saveState(STORAGE_KEYS.users, users);
   updateStats();
   renderUsers();
 });
@@ -159,6 +255,7 @@ socket.on('userDisconnected', (userId) => {
 socket.on('userKicked', (data) => {
   showToast(`${data.username} ha sido expulsado`, 'warning');
   users = users.filter(u => u.id !== data.userId);
+  saveState(STORAGE_KEYS.users, users);
   updateStats();
   renderUsers();
 });
@@ -167,6 +264,8 @@ socket.on('userBanned', (data) => {
   showToast(`IP ${data.ip} ha sido baneada`, 'warning');
   bannedIps.push(data.ip);
   users = users.filter(u => u.ip !== data.ip);
+  saveState(STORAGE_KEYS.bannedIps, bannedIps);
+  saveState(STORAGE_KEYS.users, users);
   updateStats();
   renderUsers();
   renderBannedIps();
@@ -176,6 +275,7 @@ socket.on('userNameChanged', (data) => {
   const user = users.find(u => u.id === data.userId);
   if (user) {
     user.username = data.newName;
+    saveState(STORAGE_KEYS.users, users);
     renderUsers();
     showToast(`Nombre cambiado a ${data.newName}`, 'success');
   }
@@ -183,6 +283,7 @@ socket.on('userNameChanged', (data) => {
 
 socket.on('chatStatusChanged', (running) => {
   chatRunning = running;
+  saveState(STORAGE_KEYS.chatRunning, chatRunning);
   updateChatStatus();
   showToast(`Chat ${running ? 'iniciado' : 'pausado'}`, running ? 'success' : 'warning');
 });
@@ -199,7 +300,10 @@ socket.on('adminUsersList', (data) => {
   console.log('Received admin users data:', data);
   adminUsers = data.admins || [];
   console.log('Updated adminUsers:', adminUsers);
-  renderAdminUsers(data.roles || ['Mod Junior', 'Mod', 'Admin', 'Dueño']);
+  const roles = data.roles || DEFAULT_ROLES;
+  saveState(STORAGE_KEYS.adminUsers, adminUsers);
+  saveState(STORAGE_KEYS.adminRoles, roles);
+  renderAdminUsers(roles);
 });
 
 socket.on('userPromoted', (data) => {
@@ -365,6 +469,7 @@ function unbanIp(ip) {
   if (confirm(`¿Desbanear la IP ${ip}?`)) {
     socket.emit('adminUnban', { ip });
     bannedIps = bannedIps.filter(i => i !== ip);
+    saveState(STORAGE_KEYS.bannedIps, bannedIps);
     renderBannedIps();
     updateStats();
     showToast(`IP ${ip} desbaneada`, 'success');
@@ -630,11 +735,13 @@ socket.on('messageHistory', (messages) => {
   if (!historyList) return;
   
   if (messages.length === 0) {
-    historyList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No hay mensajes en el historial</div>';
+    const markup = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No hay mensajes en el historial</div>';
+    historyList.innerHTML = markup;
+    saveState(STORAGE_KEYS.messageHistory, markup);
     return;
   }
   
-  historyList.innerHTML = messages.map(msg => {
+  const markup = messages.map(msg => {
     const date = new Date(msg.time);
     const timeStr = date.toLocaleTimeString('es-ES');
     return `
@@ -650,6 +757,8 @@ socket.on('messageHistory', (messages) => {
       </div>
     `;
   }).join('');
+  historyList.innerHTML = markup;
+  saveState(STORAGE_KEYS.messageHistory, markup);
 });
 
 // Enviar anuncio
@@ -675,11 +784,13 @@ socket.on('reportedMessages', (reports) => {
   if (!reportsList) return;
   
   if (reports.length === 0) {
-    reportsList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No hay mensajes reportados</div>';
+    const markup = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No hay mensajes reportados</div>';
+    reportsList.innerHTML = markup;
+    saveState(STORAGE_KEYS.reports, markup);
     return;
   }
   
-  reportsList.innerHTML = reports.map(report => {
+  const markup = reports.map(report => {
     const date = new Date(report.time);
     const timeStr = date.toLocaleTimeString('es-ES');
     return `
@@ -699,6 +810,8 @@ socket.on('reportedMessages', (reports) => {
       </div>
     `;
   }).join('');
+  reportsList.innerHTML = markup;
+  saveState(STORAGE_KEYS.reports, markup);
 });
 
 // Silenciar usuario
@@ -739,6 +852,7 @@ function loadBadWords() {
 
 socket.on('filteredWords', (words) => {
   badWordsList = words;
+  saveState(STORAGE_KEYS.badWords, badWordsList);
   renderBadWords();
 });
 
