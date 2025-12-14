@@ -4,6 +4,7 @@ const socket = io();
 const adminLoginOverlay = document.getElementById('adminLoginOverlay');
 const adminLoginUsername = document.getElementById('adminLoginUsername');
 const adminLoginPassword = document.getElementById('adminLoginPassword');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
 const loginError = document.getElementById('loginError');
 let isLoggedIn = false;
 
@@ -16,7 +17,7 @@ window.addEventListener('load', () => {
   }
 });
 
-window.submitAdminLogin = function() {
+function submitAdminLogin() {
   const username = adminLoginUsername.value.trim();
   const password = adminLoginPassword.value.trim();
   
@@ -54,7 +55,10 @@ window.submitAdminLogin = function() {
       adminLoginUsername.focus();
     }
   });
-};
+}
+
+// Event listeners
+adminLoginBtn.addEventListener('click', submitAdminLogin);
 
 // Permitir login con Enter
 adminLoginUsername.addEventListener('keypress', (e) => {
