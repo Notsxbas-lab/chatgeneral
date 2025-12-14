@@ -29,7 +29,7 @@
       .admin-back-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.5);color:white;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:600;text-decoration:none;transition:all 0.2s}
       .admin-back-btn:hover{background:rgba(255,255,255,0.3)}
 
-      .admin-container{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:20px 20px 20px 340px;display:flex;flex-direction:column;gap:20px}
+      .admin-container{flex:1;width:100%;margin:0;padding:20px 20px 20px 120px;display:flex;flex-direction:column;gap:20px}
 
       .admin-panel{background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:24px;display:flex;flex-direction:column;max-height:calc(100vh - 140px);overflow-y:auto}
       .admin-panel h2{margin:0 0 20px;color:var(--text-primary);font-size:1.3rem;border-bottom:2px solid var(--border);padding-bottom:12px}
@@ -95,38 +95,26 @@
       .toast.warning{border-left:4px solid var(--warning)}
       @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
 
-      /* Menú desplegable navegación - Estilo Sidebar Limpio */
-      .nav-menu{position:fixed;top:96px;left:20px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);z-index:200;width:260px;overflow:hidden}
-      .nav-menu-toggle{background:linear-gradient(135deg,#ff4757 0%,#d32f2f 100%);color:white;padding:18px 20px;cursor:pointer;font-weight:700;display:flex;justify-content:space-between;align-items:center;font-size:1rem;transition:all 0.3s;user-select:none;border:none;width:100%;border-radius:12px 12px 0 0}
-      .nav-menu-toggle:hover{background:linear-gradient(135deg,#ff6b7a,#b71c1c);box-shadow:0 4px 12px rgba(211,47,47,0.3)}
-      .nav-menu-toggle span:first-child{display:flex;align-items:center;gap:10px;font-size:1.05rem}
-      .nav-menu-icon{font-size:0.9rem;transition:transform 0.3s ease;display:inline-block}
-      .nav-menu-icon.rotated{transform:rotate(-180deg)}
-      .nav-menu-items{max-height:0;overflow:hidden;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1);background:white}
-      .nav-menu-items.active{max-height:1000px;overflow-y:auto}
-      .nav-menu-item{padding:14px 18px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:all 0.2s;font-weight:500;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:12px;position:relative;white-space:nowrap}
-      .nav-menu-item:last-child{border-bottom:none}
-      .nav-menu-item:hover{background:#fff5f5;padding-left:22px;color:#ff4757;font-weight:600}
-      .nav-menu-item.active{background:linear-gradient(90deg,#ff4757,rgba(255,71,87,0.1));color:#ff4757;font-weight:700;border-left:4px solid #ff4757;padding-left:14px}
-      .nav-menu-item::before{content:'';width:3px;height:3px;background:#ff4757;border-radius:50%;opacity:0;transition:opacity 0.2s}
-      .nav-menu-item:hover::before{opacity:0.7}
-      .nav-menu-item.active::before{opacity:1}
+      /* Menú desplegable navegación - Estilo Sidebar */
+      .sidebar{position:fixed;left:0;top:96px;width:80px;height:calc(100vh - 96px);background:linear-gradient(180deg,#ff4757 0%,#ff3f34 100%);padding:20px;box-sizing:border-box;color:white;overflow:hidden;border-radius:0 8px 8px 0;border-right:3px solid rgba(0,0,0,0.1);transition:width 0.4s cubic-bezier(0.4,0,0.2,1);z-index:199}
+      .sidebar:hover{width:280px}
+      .sidebar-menu{list-style:none;margin:0;padding:0}
+      .sidebar-item{position:relative;margin-bottom:12px}
+      .sidebar-link{display:flex;align-items:center;gap:15px;padding:14px 16px;color:white;text-decoration:none;border-radius:8px;transition:all 0.3s;font-weight:600;white-space:nowrap;cursor:pointer}
+      .sidebar-link:hover{background:rgba(255,255,255,0.15);transform:translateX(4px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+      .sidebar-link.active{background:rgba(0,0,0,0.2);border-left:4px solid white;padding-left:12px}
+      .sidebar-icon{font-size:1.4rem;min-width:24px;display:flex;align-items:center;justify-content:center}
+      .sidebar-text{display:none;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .sidebar:hover .sidebar-text{display:block}
+      .sidebar:hover{background:#1a1a1a;width:280px}
+      .sidebar:hover .sidebar-link{border-radius:6px}
+      .sidebar:hover .sidebar-link:hover{background:rgba(255,255,255,0.1)}
+      .sidebar:hover .sidebar-link.active{background:linear-gradient(90deg,rgba(255,71,87,0.8),rgba(255,71,87,0.3));border-left:4px solid #ff4757}
 
-      /* Scroll personalizado del menú */
-      .nav-menu-items::-webkit-scrollbar{width:5px}
-      .nav-menu-items::-webkit-scrollbar-track{background:transparent}
-      .nav-menu-items::-webkit-scrollbar-thumb{background:#ff4757;border-radius:3px;opacity:0.3}
-      .nav-menu-items::-webkit-scrollbar-thumb:hover{opacity:0.6}
-
-      /* Animación de entrada del menú */
-      @keyframes menuSlideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-      .nav-menu-items.active .nav-menu-item{animation:menuSlideIn 0.3s ease forwards}
-      .nav-menu-items.active .nav-menu-item:nth-child(1){animation-delay:0.02s}
-      .nav-menu-items.active .nav-menu-item:nth-child(2){animation-delay:0.04s}
-      .nav-menu-items.active .nav-menu-item:nth-child(3){animation-delay:0.06s}
-      .nav-menu-items.active .nav-menu-item:nth-child(4){animation-delay:0.08s}
-      .nav-menu-items.active .nav-menu-item:nth-child(5){animation-delay:0.1s}
-      .nav-menu-items.active .nav-menu-item:nth-child(6){animation-delay:0.12s}
+      @media (max-width:768px){
+        .sidebar{width:60px}
+        .sidebar:hover{width:200px}
+      }
       .admin-section{display:none;background:white;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
       .admin-section.active{display:block}
 
@@ -204,22 +192,59 @@
       <a href="/" class="admin-back-btn">← Volver al Chat</a>
     </div>
 
-    <!-- Menú de navegación desplegable -->
-    <div class="nav-menu">
-      <button class="nav-menu-toggle" onclick="toggleNavMenu()">
-        <span>☰ Panel Admin</span>
-        <span class="nav-menu-icon">▼</span>
-      </button>
-      <div class="nav-menu-items" id="navMenuItems">
-        <div class="nav-menu-item active" onclick="showSection('stats')">📊 Estadísticas</div>
-        <div class="nav-menu-item" onclick="showSection('users')">👥 Usuarios</div>
-        <div class="nav-menu-item" onclick="showSection('chat')">💬 Chat</div>
-        <div class="nav-menu-item" onclick="showSection('filter')">🚫 Filtro</div>
-        <div class="nav-menu-item" onclick="showSection('ban')">⛔ Ban</div>
-        <div class="nav-menu-item" onclick="showSection('live')">🔴 Monitoreo</div>
-        <div class="nav-menu-item" onclick="showSection('admins')">👑 Admins</div>
-      </div>
-    </div>
+    <!-- Sidebar Desplegable -->
+    <aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item">
+          <a onclick="showSection('stats')" class="sidebar-link active">
+            <span class="sidebar-icon">📊</span>
+            <span class="sidebar-text">Estadísticas</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('users')" class="sidebar-link">
+            <span class="sidebar-icon">👥</span>
+            <span class="sidebar-text">Usuarios</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('chat')" class="sidebar-link">
+            <span class="sidebar-icon">💬</span>
+            <span class="sidebar-text">Chat</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('filter')" class="sidebar-link">
+            <span class="sidebar-icon">🚫</span>
+            <span class="sidebar-text">Filtro</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('ban')" class="sidebar-link">
+            <span class="sidebar-icon">⛔</span>
+            <span class="sidebar-text">Ban</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('live')" class="sidebar-link">
+            <span class="sidebar-icon">🔴</span>
+            <span class="sidebar-text">Monitoreo</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('admins')" class="sidebar-link">
+            <span class="sidebar-icon">👑</span>
+            <span class="sidebar-text">Admins</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a onclick="showSection('analytics')" class="sidebar-link">
+            <span class="sidebar-icon">📈</span>
+            <span class="sidebar-text">Análisis</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
 
     <div class="admin-container">
       <!-- Sección Estadísticas -->

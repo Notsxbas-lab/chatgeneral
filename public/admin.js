@@ -572,19 +572,9 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Toggle collapsible sections
-function toggleNavMenu() {
-  const navMenuItems = document.getElementById('navMenuItems');
-  const icon = document.querySelector('.nav-menu-icon');
-  navMenuItems.classList.toggle('active');
-  icon.classList.toggle('rotated');
-}
-
 // Abrir menú por defecto
 window.addEventListener('DOMContentLoaded', () => {
-  const navMenuItems = document.getElementById('navMenuItems');
-  if (navMenuItems) {
-    navMenuItems.classList.add('active');
-  }
+  // Sidebar ya está visible por defecto
 });
 
 function showSection(sectionName) {
@@ -594,7 +584,7 @@ function showSection(sectionName) {
   });
   
   // Remover active de todos los items del menú
-  document.querySelectorAll('.nav-menu-item').forEach(item => {
+  document.querySelectorAll('.sidebar-link').forEach(item => {
     item.classList.remove('active');
   });
   
@@ -605,7 +595,10 @@ function showSection(sectionName) {
   }
   
   // Activar el item del menú correspondiente
-  event.target.classList.add('active');
+  if (event && event.target) {
+    let link = event.target.closest('.sidebar-link');
+    if (link) link.classList.add('active');
+  }
   
   // Cargar datos específicos de la sección
   if (sectionName === 'admins') {
