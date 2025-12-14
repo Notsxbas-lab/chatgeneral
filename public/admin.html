@@ -95,6 +95,16 @@
       .toast.warning{border-left:4px solid var(--warning)}
       @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
 
+      /* Secciones colapsables */
+      .collapsible-section{border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
+      .collapsible-header{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--bg-light);cursor:pointer;user-select:none;transition:background 0.2s}
+      .collapsible-header:hover{background:#e5f2f7}
+      .collapsible-header h3{margin:0;color:var(--text-primary);font-size:1rem;display:flex;align-items:center;gap:8px}
+      .collapsible-icon{transition:transform 0.3s;font-size:1.2rem}
+      .collapsible-content{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
+      .collapsible-content.active{max-height:2000px}
+      .collapsible-body{padding:16px}
+
       @media (max-width:768px){
         .admin-container{grid-template-columns:1fr}
         .modal-dialog{min-width:90vw}
@@ -133,6 +143,7 @@
       .demote-btn:hover{background:#f57c00}
     </style>
   </head>
+
   <body>
     <div id="adminLoginOverlay">
       <div class="admin-login-box">
@@ -171,70 +182,105 @@
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
-          <h3 style="margin:0 0 12px;color:var(--text-primary)">👑 Administradores</h3>
-          <div style="background:var(--bg-light);padding:16px;border-radius:8px;margin-bottom:16px">
-            <label style="display:block;margin-bottom:8px;font-weight:600;font-size:0.9rem">Añadir Admin por Nombre</label>
-            <div class="admin-controls" style="margin-bottom:0">
-              <input id="addAdminUsername" type="text" placeholder="Nombre de usuario" style="flex:2">
-              <select id="addAdminRole" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
-                <option value="Mod Junior">Mod Junior</option>
-                <option value="Mod">Mod</option>
-                <option value="Admin">Admin</option>
-                <option value="Dueño">Dueño</option>
-              </select>
-              <button onclick="addAdminByName()" style="background:var(--success)">➕ Añadir</button>
+        <div class="collapsible-section" style="margin-top:24px">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <h3>👑 Administradores</h3>
+            <span class="collapsible-icon">▼</span>
+          </div>
+          <div class="collapsible-content active">
+            <div class="collapsible-body">
+              <div style="background:var(--bg-light);padding:16px;border-radius:8px;margin-bottom:16px">
+                <label style="display:block;margin-bottom:8px;font-weight:600;font-size:0.9rem">Añadir Admin por Nombre</label>
+                <div class="admin-controls" style="margin-bottom:0">
+                  <input id="addAdminUsername" type="text" placeholder="Nombre de usuario" style="flex:2">
+                  <select id="addAdminRole" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+                    <option value="Mod Junior">Mod Junior</option>
+                    <option value="Mod">Mod</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Dueño">Dueño</option>
+                  </select>
+                  <button onclick="addAdminByName()" style="background:var(--success)">➕ Añadir</button>
+                </div>
+              </div>
+              <div class="admin-controls">
+                <button onclick="loadAdminUsers()" style="flex:1;padding:12px">📋 Ver Administradores</button>
+                <button onclick="loadAdminUsers()" style="flex:0;padding:12px">🔄</button>
+              </div>
+              <div id="adminUsersList" style="margin-top:16px"></div>
             </div>
           </div>
-          <div class="admin-controls">
-            <button onclick="loadAdminUsers()" style="flex:1;padding:12px">📋 Ver Administradores</button>
-            <button onclick="loadAdminUsers()" style="flex:0;padding:12px">🔄</button>
-          </div>
-          <div id="adminUsersList" style="margin-top:16px"></div>
         </div>
 
-        <h2 style="margin-top:24px">👥 Usuarios Conectados</h2>
-        <div class="admin-controls">
-          <input id="searchUser" type="text" placeholder="Buscar usuario...">
-          <button onclick="refreshUsers()">🔄 Actualizar</button>
-        </div>
-        
-        <div id="usersContainer" style="flex:1;overflow-y:auto">
-          <div class="empty-state">
-            <p>Cargando usuarios...</p>
+        <div class="collapsible-section" style="margin-top:16px">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <h3>👥 Usuarios Conectados</h3>
+            <span class="collapsible-icon">▼</span>
+          </div>
+          <div class="collapsible-content active">
+            <div class="collapsible-body">
+              <div class="admin-controls">
+                <input id="searchUser" type="text" placeholder="Buscar usuario...">
+                <button onclick="refreshUsers()">🔄 Actualizar</button>
+              </div>
+              <div id="usersContainer" style="max-height:400px;overflow-y:auto;margin-top:12px">
+                <div class="empty-state">
+                  <p>Cargando usuarios...</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-      <div class="admin-panel">
+      </div>
         <h2>⚙️ Controles Globales</h2>
         
-        <div style="margin-bottom:24px">
-          <h3 style="margin:0 0 12px;color:var(--text-primary)">Estado del Chat</h3>
-          <div id="chatStatusDisplay" style="padding:12px;background:var(--bg-light);border-radius:6px;font-weight:600;color:var(--text-primary);margin-bottom:12px">
-            Estado: Conectando...
+        <div class="collapsible-section" style="margin-top:16px">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <h3>💬 Estado del Chat</h3>
+            <span class="collapsible-icon">▼</span>
           </div>
-          <div class="admin-controls" style="flex-direction:column">
-            <button id="startChatBtn" style="width:100%;padding:12px">▶ Iniciar Chat</button>
-            <button id="stopChatBtn" style="width:100%;padding:12px" class="danger">⏹ Parar Chat</button>
+          <div class="collapsible-content active">
+            <div class="collapsible-body">
+              <div id="chatStatusDisplay" style="padding:12px;background:var(--bg-light);border-radius:6px;font-weight:600;color:var(--text-primary);margin-bottom:12px">
+                Estado: Conectando...
+              </div>
+              <div class="admin-controls" style="flex-direction:column">
+                <button id="startChatBtn" style="width:100%;padding:12px">▶ Iniciar Chat</button>
+                <button id="stopChatBtn" style="width:100%;padding:12px" class="danger">⏹ Parar Chat</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--border);padding-top:24px">
-          <h3 style="margin:0 0 12px;color:var(--text-primary)">Gestión de IPs Baneadas</h3>
-          <div class="admin-controls">
-            <input id="banIpInput" type="text" placeholder="IP a banear..." style="flex:1">
-            <button id="banIpBtn" class="danger">🚫 Banear</button>
+        <div class="collapsible-section" style="margin-top:16px">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <h3>🚫 Gestión de IPs Baneadas</h3>
+            <span class="collapsible-icon">▼</span>
           </div>
-          <div id="bannedIpsList" style="margin-top:12px;max-height:250px;overflow-y:auto"></div>
+          <div class="collapsible-content active">
+            <div class="collapsible-body">
+              <div class="admin-controls">
+                <input id="banIpInput" type="text" placeholder="IP a banear..." style="flex:1">
+                <button id="banIpBtn" class="danger">🚫 Banear</button>
+              </div>
+              <div id="bannedIpsList" style="margin-top:12px;max-height:250px;overflow-y:auto"></div>
+            </div>
+          </div>
         </div>
 
-        <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
-          <h3 style="margin:0 0 12px;color:var(--text-primary)">Contraseña Admin</h3>
-          <div class="admin-controls">
-            <input id="adminPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)">
-            <button id="setPasswordBtn">🔐 Establecer</button>
+        <div class="collapsible-section" style="margin-top:16px">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <h3>🔐 Contraseña Admin</h3>
+            <span class="collapsible-icon">▼</span>
           </div>
-          <p id="passwordStatus" style="font-size:0.85rem;color:var(--text-secondary);margin:8px 0">Estado: Sin contraseña</p>
+          <div class="collapsible-content active">
+            <div class="collapsible-body">
+              <div class="admin-controls">
+                <input id="adminPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)">
+                <button id="setPasswordBtn">🔐 Establecer</button>
+              </div>
+              <p id="passwordStatus" style="font-size:0.85rem;color:var(--text-secondary);margin:8px 0">Estado: Sin contraseña</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

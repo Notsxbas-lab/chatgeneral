@@ -549,6 +549,14 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Toggle collapsible sections
+function toggleSection(header) {
+  const content = header.nextElementSibling;
+  const icon = header.querySelector('.collapsible-icon');
+  content.classList.toggle('active');
+  icon.textContent = content.classList.contains('active') ? '▼' : '▶';
+}
+
 // Initial load
 if (isLoggedIn) {
   requestAdminData();
