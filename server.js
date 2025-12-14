@@ -14,7 +14,7 @@ const connectedUsers = new Map(); // socketId -> { id, username, ip, room, socke
 const bannedIps = new Set();
 const roomsList = new Set(['global']);
 let chatRunning = true;
-let adminPassword = 'Paneladmin'; // Contraseña por defecto
+let adminPassword = 'linda1102'; // Contraseña por defecto
 
 // Roles y Permisos
 const roles = {
@@ -35,6 +35,9 @@ const permissions = {
 
 const adminUsers = new Map(); // socketId -> { username, role }
 const registeredAdmins = new Map(); // username -> { role } - Lista de admins registrados
+
+// Admin por defecto
+registeredAdmins.set('Dueno', { role: roles.DUENO });
 
 // Get client IP
 function getClientIp(socket) {
