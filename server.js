@@ -369,13 +369,33 @@ socket.on('adminSetPassword', ({ password }) => {
   });
 
   // Registrar nuevo admin por nombre
-  socket.on('registerAdmin', ({ username, role, password }) => {
-    if (!socket.isAdmin || !permissions[socket.adminRole]?.includes('manageRoles')) return;
-    
+  socket.on('registerAdmin', ({ username, role, password }, cb) => {
+    if (!socket.isAdmin || !permissions[socket.adminRole]?.includes('manageRoles')) {
+      cb && cb({ success: false, message: 'No autorizado' });
+      return;
+    }
+
+    if (!username || !role) {
+      cb && cb({ success: false, message: 'Faltan datos' });
+      return;
+    }
+
     registeredAdmins.set(username, { role, password: password || null });
     console.log(`Admin registrado: ${username} con rol ${role}`);
+
+    const rolesArray = ['Mod Junior', 'Mod', 'Admin', 'Dueño'];
+    const adminList = Array.from(registeredAdmins.entries()).map(([u, data]) => ({
+      id: u,
+      username: u,
+      role: data.role
+    }));
+
+    // Enviar lista actualizada al solicitante y notificar a todos los admins
+    socket.emit('adminUsersList', { admins: adminList, roles: rolesArray });
     io.to('admin').emit('adminRegistered', { userId: username, username, role });
     io.to('admin').emit('userPromoted', { userId: username, username, role });
+
+    cb && cb({ success: true });
   });
 
   // Promover/Degradar usuario a administrador

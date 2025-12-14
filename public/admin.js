@@ -360,32 +360,37 @@ function confirmChangeName() {
   closeModal();
 }
 
-function loadAdminUsers() {
-  socket.emit('getAdminUsers');
-  socket.emit('getAdminData');
-}
-
-function refreshUsers() {
-  socket.emit('getAdminData');
-  loadAdminUsers();
-  showToast('Datos actualizados', 'success');
-}
-
-function renderAdminUsers(availableRoles) {
-  console.log('Admin users to render:', adminUsers);
-  if (!adminUsers || adminUsers.length === 0) {
-    adminUsersList.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem;padding:12px">No hay administradores asignados</p>';
+function addAdminByName() {
+  const username = document.getElementById('addAdminUsername').value.trim();
+  const password = document.getElementById('addAdminPassword').value.trim();
+  const role = document.getElementById('addAdminRole').value;
+  
+  if (!username) {
+    showToast('Ingresa un nombre de usuario', 'error');
     return;
   }
-
-  adminUsersList.innerHTML = `
-    <div class="admin-users-list">
-      ${adminUsers.map(admin => {
-        const roleClass = (admin.role || '').toLowerCase().replace(/\s+/g, '-');
-        return `
-          <div class="admin-user-item" style="padding:12px;background:var(--bg-light);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-            <div class="admin-user-info">
-              <div class="name" style="font-weight:600">${admin.username}</div>
+  
+  if (!password) {
+    showToast('Ingresa una contraseña', 'error');
+    return;
+  }
+  
+  if (password.length < 6) {
+    showToast('La contraseña debe tener mínimo 6 caracteres', 'error');
+    return;
+  }
+  
+  console.log('Registering admin:', username, role);
+  socket.emit('registerAdmin', { username, role, password }, (res) => {
+    if (res && res.success) {
+      showToast(`${username} registrado como ${role}`, 'success');
+      loadAdminUsers();
+    } else {
+      showToast(res?.message || 'No se pudo registrar', 'error');
+    }
+  });
+  document.getElementById('addAdminUsername').value = '';
+  document.getElementById('addAdminPassword').value = '';
               <span class="role-badge ${roleClass}" style="display:inline-block;padding:4px 8px;background:var(--primary);color:white;border-radius:4px;font-size:0.8rem">${admin.role}</span>
             </div>
             <div class="admin-user-actions" style="display:flex;gap:8px">
