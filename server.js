@@ -72,19 +72,29 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Buscar admin (case-insensitive)
+    let adminData = null;
+    let foundUsername = null;
+    for (const [regUsername, data] of registeredAdmins.entries()) {
+      if (regUsername.toLowerCase() === username.toLowerCase()) {
+        adminData = data;
+        foundUsername = regUsername;
+        break;
+      }
+    }
+    
     // Verificar contraseña y usuario
-    if (password === adminPassword && registeredAdmins.has(username)) {
-      const adminData = registeredAdmins.get(username);
+    if (password === adminPassword && adminData) {
       socket.isAdmin = true;
       socket.adminRole = adminData.role;
-      socket.adminUsername = username;
+      socket.adminUsername = foundUsername;
       socket.join('admin');
-      adminUsers.set(socket.id, { username, role: adminData.role });
-      console.log('Admin autenticado:', username, 'con rol:', socket.adminRole);
+      adminUsers.set(socket.id, { username: foundUsername, role: adminData.role });
+      console.log('Admin autenticado:', foundUsername, 'con rol:', socket.adminRole);
       callback({ success: true });
-      io.to('admin').emit('adminJoined', { username, role: socket.adminRole });
+      io.to('admin').emit('adminJoined', { username: foundUsername, role: socket.adminRole });
     } else {
-      console.log('Intento de login admin fallido desde:', socket.id, 'usuario:', username);
+      console.log('Intento de login admin fallido desde:', socket.id, 'usuario:', username, 'password match:', password === adminPassword, 'user exists:', !!adminData);
       callback({ success: false });
     }
   });
