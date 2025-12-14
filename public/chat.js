@@ -159,13 +159,14 @@ function appendMessage(data) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.classList.add(isMe ? 'me' : 'other');
+  bubble.dataset.messageId = data.id;
 
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
   meta.textContent = `${data.username} • ${new Date(data.time).toLocaleTimeString()}`;
 
   const content = document.createElement('div');
-  content.innerHTML = escapeHtml(data.message);
+  content.innerHTML = processMentions(escapeHtml(data.message));
 
   bubble.appendChild(meta);
   bubble.appendChild(content);
@@ -177,17 +178,66 @@ function appendMessage(data) {
     bubble.appendChild(img);
   }
 
-  // Agregar botón de reportar si no es mi mensaje
+  // Agregar botones de acción
+  const actions = document.createElement('div');
+  actions.className = 'bubble-actions';
+  
+  const replyBtn = document.createElement('button');
+  replyBtn.className = 'bubble-action-btn';
+  replyBtn.textContent = '↩️';
+  replyBtn.title = 'Responder';
+  replyBtn.onclick = () => replyToMessage(data);
+  actions.appendChild(replyBtn);
+  
+  const reactBtn = document.createElement('button');
+  reactBtn.className = 'bubble-action-btn';
+  reactBtn.textContent = '😊';
+  reactBtn.title = 'Reaccionar';
+  reactBtn.onclick = (e) => showReactionPicker(data.id, e);
+  actions.appendChild(reactBtn);
+  
   if (!isMe) {
-    const actions = document.createElement('div');
-    actions.className = 'bubble-actions';
+    const dmBtn = document.createElement('button');
+    dmBtn.className = 'bubble-action-btn';
+    dmBtn.textContent = '✉️';
+    dmBtn.title = 'Mensaje directo';
+    dmBtn.onclick = () => openDM(data.username);
+    actions.appendChild(dmBtn);
+    
     const reportBtn = document.createElement('button');
     reportBtn.className = 'bubble-action-btn';
     reportBtn.textContent = '🚨';
     reportBtn.title = 'Reportar';
     reportBtn.onclick = () => reportMessage(data.id, data.message);
     actions.appendChild(reportBtn);
-    bubble.appendChild(actions);
+  }
+  
+  bubble.appendChild(actions);
+  
+  // Mostrar respuesta previa si existe
+  if (data.replyTo) {
+    const replyPreview = document.createElement('div');
+    replyPreview.className = 'reply-preview';
+    replyPreview.textContent = `↩️ ${data.replyTo.username}: ${data.replyTo.message.substring(0, 50)}...`;
+    bubble.insertBefore(replyPreview, content);
+  }
+  
+  // Mostrar reacciones
+  if (data.reactions && Object.keys(data.reactions).length > 0) {
+    const reactionsDiv = document.createElement('div');
+    reactionsDiv.className = 'bubble-reactions';
+    
+    for (const [emoji, users] of Object.entries(data.reactions)) {
+      const reactionEl = document.createElement('span');
+      reactionEl.className = 'reaction';
+      if (users.includes(username)) reactionEl.classList.add('user-reacted');
+      reactionEl.innerHTML = `${emoji} <strong>${users.length}</strong>`;
+      reactionEl.title = users.join(', ');
+      reactionEl.onclick = () => toggleReaction(data.id, emoji);
+      reactionsDiv.appendChild(reactionEl);
+    }
+    
+    bubble.appendChild(reactionsDiv);
   }
 
   if (isMe) {
@@ -388,7 +438,12 @@ socket.on('roomJoined', ({ room }) => {
 
 socket.on('system', (text) => appendSystem(text));
 
-socket.on('message', (data) => appendMessage(data));
+socket.on('message', (data) => {
+  appendMessage(data);
+  if (data.socketId !== socket.id && data.message) {
+    showDesktopNotification(`${data.username} en #${data.room}`, data.message);
+  }
+});
 
 socket.on('moderated', ({ reason }) => {
   appendSystem(`⚠️ ${reason}`);
@@ -410,7 +465,27 @@ form.addEventListener('submit', (e) => {
   if (!username) return alert('Primero únase con un nombre.');
   const msg = input.value.trim();
   if (!msg) return;
-  socket.emit('message', { type: 'text', text: msg, room: currentRoom, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
+  
+  const payload = {
+    type: 'text',
+    text: msg,
+    room: currentRoom,
+    avatarColor: profileColor,
+    avatarEmoji: profileEmojis,
+    profileImage,
+    bgColor
+  };
+  
+  if (currentReplyTo) {
+    payload.replyTo = {
+      id: currentReplyTo.id,
+      username: currentReplyTo.username,
+      message: currentReplyTo.message
+    };
+    cancelReply();
+  }
+  
+  socket.emit('message', payload);
   input.value = '';
   
   // Detener indicador de escritura
@@ -513,6 +588,216 @@ function updateTypingIndicator() {
     typingIndicator.style.display = 'none';
   }
 }
+
+// Reacciones
+let currentReplyTo = null;
+const reactionEmojis = ['👍', '❤️', '😂', '🔥', '👏', '😮', '😢', '😡'];
+
+function showReactionPicker(messageId, event) {
+  event.stopPropagation();
+  const existing = document.getElementById('reactionPicker');
+  if (existing) existing.remove();
+  
+  const picker = document.createElement('div');
+  picker.id = 'reactionPicker';
+  picker.style.cssText = 'position:fixed;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);padding:8px;display:flex;gap:4px;z-index:2000';
+  picker.style.left = event.pageX + 'px';
+  picker.style.top = event.pageY + 'px';
+  
+  reactionEmojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.textContent = emoji;
+    btn.style.cssText = 'border:none;background:var(--bg-light);padding:8px;border-radius:6px;cursor:pointer;font-size:1.2rem';
+    btn.onmouseover = () => btn.style.background = 'var(--primary)';
+    btn.onmouseout = () => btn.style.background = 'var(--bg-light)';
+    btn.onclick = () => {
+      toggleReaction(messageId, emoji);
+      picker.remove();
+    };
+    picker.appendChild(btn);
+  });
+  
+  document.body.appendChild(picker);
+  setTimeout(() => {
+    const closeOnClick = (e) => {
+      if (!picker.contains(e.target)) {
+        picker.remove();
+        document.removeEventListener('click', closeOnClick);
+      }
+    };
+    document.addEventListener('click', closeOnClick);
+  }, 100);
+}
+
+function toggleReaction(messageId, emoji) {
+  socket.emit('addReaction', { messageId, emoji });
+}
+
+socket.on('reactionAdded', (data) => {
+  const msgElements = document.querySelectorAll('.bubble');
+  msgElements.forEach(bubble => {
+    if (bubble.dataset.messageId === data.messageId) {
+      let reactionsDiv = bubble.querySelector('.bubble-reactions');
+      if (!reactionsDiv) {
+        reactionsDiv = document.createElement('div');
+        reactionsDiv.className = 'bubble-reactions';
+        bubble.appendChild(reactionsDiv);
+      }
+      
+      reactionsDiv.innerHTML = '';
+      for (const [emoji, users] of Object.entries(data.reactions)) {
+        const reactionEl = document.createElement('span');
+        reactionEl.className = 'reaction';
+        if (users.includes(username)) reactionEl.classList.add('user-reacted');
+        reactionEl.innerHTML = `${emoji} <strong>${users.length}</strong>`;
+        reactionEl.title = users.join(', ');
+        reactionEl.onclick = () => toggleReaction(data.messageId, emoji);
+        reactionsDiv.appendChild(reactionEl);
+      }
+    }
+  });
+});
+
+// Responder a mensajes
+function replyToMessage(data) {
+  currentReplyTo = data;
+  const replyIndicator = document.getElementById('replyIndicator') || document.createElement('div');
+  replyIndicator.id = 'replyIndicator';
+  replyIndicator.style.cssText = 'padding:8px 12px;background:var(--bg-light);border-left:3px solid var(--primary);margin:0 16px 8px;border-radius:4px;display:flex;justify-content:space-between;align-items:center';
+  replyIndicator.innerHTML = `<span>Respondiendo a <strong>${data.username}</strong>: ${data.message.substring(0, 50)}...</span><button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;font-size:1.2rem">✕</button>`;
+  form.parentElement.insertBefore(replyIndicator, form);
+  input.focus();
+}
+
+function cancelReply() {
+  currentReplyTo = null;
+  const indicator = document.getElementById('replyIndicator');
+  if (indicator) indicator.remove();
+}
+window.cancelReply = cancelReply;
+
+// Menciones
+function processMentions(text) {
+  return text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+}
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === '@') {
+    // Aquí se podría agregar autocompletado de usuarios
+  }
+});
+
+// Mensajes Directos
+const dmConversations = new Map();
+const dmBtn = document.getElementById('dmBtn');
+const dmList = document.getElementById('dmList');
+
+if (dmBtn) {
+  dmBtn.addEventListener('click', () => {
+    dmList.classList.toggle('show');
+    loadDMList();
+  });
+}
+
+function openDM(targetUsername) {
+  if (targetUsername === username) return;
+  const dmWindow = window.open(`#dm-${targetUsername}`, '_blank', 'width=400,height=600');
+  // En una implementación real, abriría una ventana de chat
+  alert(`Función de DM con ${targetUsername} - Por implementar completamente`);
+}
+
+function loadDMList() {
+  const dmItems = document.getElementById('dmItems');
+  if (!dmItems) return;
+  
+  if (dmConversations.size === 0) {
+    dmItems.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No tienes conversaciones</div>';
+  } else {
+    dmItems.innerHTML = Array.from(dmConversations.keys()).map(user => 
+      `<div class="dm-item" onclick="openDM('${user}')">${user}</div>`
+    ).join('');
+  }
+}
+
+function closeDMList() {
+  dmList.classList.remove('show');
+}
+window.closeDMList = closeDMList;
+window.openDM = openDM;
+
+// Búsqueda de mensajes
+const searchBtn = document.getElementById('searchBtn');
+const searchBar = document.getElementById('searchBar');
+const searchInput = document.getElementById('searchInput');
+let allMessages = [];
+
+if (searchBtn) {
+  searchBtn.addEventListener('click', () => {
+    searchBar.style.display = searchBar.style.display === 'none' ? 'block' : 'none';
+    if (searchBar.style.display === 'block') searchInput.focus();
+  });
+}
+
+if (searchInput) {
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    if (!query) {
+      messages.querySelectorAll('.message-row').forEach(el => el.style.display = 'flex');
+      return;
+    }
+    
+    messages.querySelectorAll('.message-row').forEach(el => {
+      const text = el.textContent.toLowerCase();
+      el.style.display = text.includes(query) ? 'flex' : 'none';
+    });
+  });
+}
+
+function closeSearch() {
+  searchBar.style.display = 'none';
+  searchInput.value = '';
+  messages.querySelectorAll('.message-row').forEach(el => el.style.display = 'flex');
+}
+window.closeSearch = closeSearch;
+
+// Estados de usuario
+const statusBtn = document.getElementById('statusBtn');
+const statusSelector = document.getElementById('statusSelector');
+let userStatus = '🟢 Disponible';
+
+if (statusBtn) {
+  statusBtn.addEventListener('click', () => {
+    statusSelector.classList.toggle('show');
+  });
+}
+
+function setStatus(status) {
+  userStatus = status;
+  statusBtn.textContent = status;
+  statusSelector.classList.remove('show');
+  socket.emit('statusChange', { status });
+  appendSystem(`Tu estado cambió a: ${status}`);
+}
+window.setStatus = setStatus;
+
+// Notificaciones de escritorio
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function showDesktopNotification(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      tag: 'chat-notification'
+    });
+  }
+}
+
+requestNotificationPermission();
 
 // Reportar mensaje
 function reportMessage(messageId, messageText) {

@@ -217,7 +217,8 @@ io.on('connection', (socket) => {
       avatarEmoji: socket.avatarEmoji || '',
       profileImage: socket.profileImage || '',
       bgColor: socket.bgColor || '#fafbff',
-      reactions: {}
+      reactions: {},
+      replyTo: (typeof msg === 'object' && msg.replyTo) ? msg.replyTo : undefined
     };
     
     // Guardar en historial
@@ -227,6 +228,7 @@ io.on('connection', (socket) => {
     }
     
     io.to(payload.room).emit('message', payload);
+    io.to('live-monitor').emit('liveMessage', payload);
   });
 
   // receive images separately (legacy fallback)
@@ -576,6 +578,92 @@ socket.on('adminSetPassword', ({ password }) => {
       io.to('admin').emit('userDemoted', { userId, username: targetSocket.username });
       console.log(`${targetSocket.username} removido de administradores`);
     }
+  });
+
+  // Cambio de estado
+  socket.on('statusChange', (data) => {
+    socket.userStatus = data.status;
+    if (connectedUsers.has(socket.id)) {
+      connectedUsers.get(socket.id).status = data.status;
+    }
+    io.to(socket.room || 'global').emit('userStatusChanged', {
+      username: socket.username,
+      status: data.status
+    });
+  });
+
+  // Mensaje privado
+  socket.on('privateMessage', (data) => {
+    const targetSocket = Array.from(io.sockets.sockets.values())
+      .find(s => s.username === data.targetUsername);
+    
+    if (targetSocket) {
+      const payload = {
+        from: socket.username,
+        to: data.targetUsername,
+        message: data.message,
+        time: Date.now(),
+        type: 'private'
+      };
+      targetSocket.emit('privateMessage', payload);
+      socket.emit('privateMessage', payload);
+    }
+  });
+
+  // Obtener palabras filtradas
+  socket.on('getFilteredWords', () => {
+    if (!socket.isAdmin) return;
+    socket.emit('filteredWords', Array.from(badWords));
+  });
+
+  // Agregar palabra filtrada
+  socket.on('addFilteredWord', (word) => {
+    if (!socket.isAdmin) return;
+    if (word && word.trim()) {
+      badWords.add(word.trim().toLowerCase());
+      io.to('admin').emit('filteredWords', Array.from(badWords));
+      addModerationLog('filter-add', socket.username, word);
+    }
+  });
+
+  // Remover palabra filtrada
+  socket.on('removeFilteredWord', (word) => {
+    if (!socket.isAdmin) return;
+    badWords.delete(word.toLowerCase());
+    io.to('admin').emit('filteredWords', Array.from(badWords));
+    addModerationLog('filter-remove', socket.username, word);
+  });
+
+  // Obtener estadísticas en tiempo real
+  socket.on('getLiveStats', () => {
+    if (!socket.isAdmin) return;
+    
+    const stats = {
+      totalUsers: connectedUsers.size,
+      messageCount: messageHistory.length,
+      activeRooms: Array.from(roomsList).map(room => ({
+        name: room,
+        users: Array.from(connectedUsers.values()).filter(u => u.room === room).length
+      })),
+      recentActivity: messageHistory.slice(-10).map(m => ({
+        username: m.username,
+        room: m.room,
+        time: m.time
+      }))
+    };
+    
+    socket.emit('liveStats', stats);
+  });
+
+  // Monitoreo en tiempo real de mensajes
+  socket.on('startLiveMonitoring', () => {
+    if (!socket.isAdmin) return;
+    socket.join('live-monitor');
+  });
+
+  socket.on('stopLiveMonitoring', () => {
+    if (!socket.isAdmin) return;
+    socket.leave('live-monitor');
   });
 });
 

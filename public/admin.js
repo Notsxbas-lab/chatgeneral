@@ -618,6 +618,10 @@ function showSection(sectionName) {
     loadMessageHistory();
   } else if (sectionName === 'reports') {
     loadReportedMessages();
+  } else if (sectionName === 'filter') {
+    loadBadWords();
+  } else if (sectionName === 'analytics') {
+    loadAnalytics();
   }
 }
 
@@ -732,3 +736,385 @@ function muteUser() {
 socket.on('system', (message) => {
   showToast(message, 'success');
 });
+
+// ===== FILTRO DE PALABRAS =====
+let badWordsList = [];
+
+function loadBadWords() {
+  socket.emit('getFilteredWords');
+}
+
+socket.on('filteredWords', (words) => {
+  badWordsList = words;
+  renderBadWords();
+});
+
+function renderBadWords() {
+  const container = document.getElementById('badWordsList');
+  if (!container) return;
+  
+  if (badWordsList.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-secondary);padding:12px">No hay palabras filtradas</p>';
+    return;
+  }
+  
+  container.innerHTML = badWordsList.map(word => 
+    `<div class="word-badge">
+      <span>${word}</span>
+      <button onclick="removeBadWord('${word}')" title="Eliminar">✕</button>
+    </div>`
+  ).join('');
+}
+
+function addBadWord() {
+  const input = document.getElementById('newBadWord');
+  const word = input.value.trim();
+  
+  if (!word) {
+    showToast('Ingresa una palabra', 'warning');
+    return;
+  }
+  
+  if (badWordsList.includes(word.toLowerCase())) {
+    showToast('Esta palabra ya está filtrada', 'warning');
+    return;
+  }
+  
+  socket.emit('addFilteredWord', word);
+  input.value = '';
+  showToast(`Palabra "${word}" agregada al filtro`, 'success');
+}
+
+function removeBadWord(word) {
+  if (confirm(`¿Eliminar "${word}" del filtro?`)) {
+    socket.emit('removeFilteredWord', word);
+    showToast(`Palabra "${word}" eliminada`, 'success');
+  }
+}
+window.addBadWord = addBadWord;
+window.removeBadWord = removeBadWord;
+window.loadBadWords = loadBadWords;
+
+// ===== MONITOREO EN VIVO =====
+let isMonitoring = false;
+
+function startLiveMonitor() {
+  isMonitoring = true;
+  socket.emit('startLiveMonitoring');
+  document.getElementById('startMonitorBtn').style.display = 'none';
+  document.getElementById('stopMonitorBtn').style.display = 'block';
+  document.getElementById('liveMessageFeed').style.display = 'block';
+  document.getElementById('liveMessageFeed').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">Esperando mensajes...</div>';
+  showToast('Monitoreo en vivo iniciado', 'success');
+}
+
+function stopLiveMonitor() {
+  isMonitoring = false;
+  socket.emit('stopLiveMonitoring');
+  document.getElementById('startMonitorBtn').style.display = 'block';
+  document.getElementById('stopMonitorBtn').style.display = 'none';
+  showToast('Monitoreo detenido', 'warning');
+}
+
+socket.on('liveMessage', (msg) => {
+  if (!isMonitoring) return;
+  
+  const feed = document.getElementById('liveMessageFeed');
+  if (!feed) return;
+  
+  if (feed.querySelector('div[style*="Esperando mensajes"]')) {
+    feed.innerHTML = '';
+  }
+  
+  const time = new Date(msg.time).toLocaleTimeString('es-ES');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'live-message';
+  msgDiv.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <strong style="color:var(--primary)">${msg.username}</strong>
+      <span style="font-size:0.75rem;color:var(--text-secondary)">${time} - #${msg.room}</span>
+    </div>
+    <div style="color:var(--text-primary)">${msg.message || '[imagen]'}</div>
+  `;
+  
+  feed.insertBefore(msgDiv, feed.firstChild);
+  
+  // Limitar a 50 mensajes
+  while (feed.children.length > 50) {
+    feed.removeChild(feed.lastChild);
+  }
+});
+
+window.startLiveMonitor = startLiveMonitor;
+window.stopLiveMonitor = stopLiveMonitor;
+
+// ===== ANALÍTICAS =====
+let analyticsData = null;
+
+function loadAnalytics() {
+  socket.emit('getLiveStats');
+  showToast('Cargando estadísticas...', 'success');
+}
+
+socket.on('liveStats', (stats) => {
+  analyticsData = stats;
+  renderAnalytics();
+});
+
+function renderAnalytics() {
+  if (!analyticsData) return;
+  
+  // Actualizar contadores
+  const totalMsgsEl = document.getElementById('totalMessagesCount');
+  if (totalMsgsEl) totalMsgsEl.textContent = analyticsData.messageCount || 0;
+  
+  const avgMsgs = analyticsData.totalUsers > 0 
+    ? Math.round(analyticsData.messageCount / analyticsData.totalUsers) 
+    : 0;
+  const avgEl = document.getElementById('avgMessagesPerUser');
+  if (avgEl) avgEl.textContent = avgMsgs;
+  
+  const mostActive = analyticsData.activeRooms
+    .sort((a, b) => b.users - a.users)[0];
+  const mostActiveEl = document.getElementById('mostActiveRoom');
+  if (mostActiveEl) mostActiveEl.textContent = mostActive ? `#${mostActive.name}` : '-';
+  
+  // Gráfico de salas
+  const roomChart = document.getElementById('roomChart');
+  if (roomChart) {
+    roomChart.innerHTML = '';
+    const maxUsers = Math.max(...analyticsData.activeRooms.map(r => r.users), 1);
+    
+    analyticsData.activeRooms.forEach(room => {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const height = (room.users / maxUsers) * 100;
+      bar.style.height = `${height}%`;
+      
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      label.textContent = `#${room.name}`;
+      
+      const value = document.createElement('div');
+      value.className = 'bar-value';
+      value.textContent = room.users;
+      
+      bar.appendChild(value);
+      bar.appendChild(label);
+      roomChart.appendChild(bar);
+    });
+  }
+  
+  // Gráfico de actividad reciente
+  const activityChart = document.getElementById('activityChart');
+  if (activityChart && analyticsData.recentActivity) {
+    activityChart.innerHTML = '';
+    const activity = analyticsData.recentActivity.slice(-10);
+    
+    activity.forEach((msg, idx) => {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = `${(idx + 1) * 10}%`;
+      
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      label.textContent = msg.username.substring(0, 8);
+      
+      bar.appendChild(label);
+      activityChart.appendChild(bar);
+    });
+  }
+  
+  showToast('Estadísticas actualizadas', 'success');
+}
+
+window.loadAnalytics = loadAnalytics;
+// ===== FILTRO DE PALABRAS =====
+let badWordsList = [];
+
+function loadBadWords() {
+  socket.emit('getFilteredWords');
+}
+
+socket.on('filteredWords', (words) => {
+  badWordsList = words;
+  renderBadWords();
+});
+
+function renderBadWords() {
+  const container = document.getElementById('badWordsList');
+  if (!container) return;
+  
+  if (badWordsList.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-secondary);padding:12px">No hay palabras filtradas</p>';
+    return;
+  }
+  
+  container.innerHTML = badWordsList.map(word => 
+    `<div class="word-badge">
+      <span>${word}</span>
+      <button onclick="removeBadWord('${word}')" title="Eliminar">✕</button>
+    </div>`
+  ).join('');
+}
+
+function addBadWord() {
+  const input = document.getElementById('newBadWord');
+  const word = input.value.trim();
+  
+  if (!word) {
+    showToast('Ingresa una palabra', 'warning');
+    return;
+  }
+  
+  if (badWordsList.includes(word.toLowerCase())) {
+    showToast('Esta palabra ya está filtrada', 'warning');
+    return;
+  }
+  
+  socket.emit('addFilteredWord', word);
+  input.value = '';
+  showToast(`Palabra "${word}" agregada al filtro`, 'success');
+}
+
+function removeBadWord(word) {
+  if (confirm(`¿Eliminar "${word}" del filtro?`)) {
+    socket.emit('removeFilteredWord', word);
+    showToast(`Palabra "${word}" eliminada`, 'success');
+  }
+}
+window.addBadWord = addBadWord;
+window.removeBadWord = removeBadWord;
+window.loadBadWords = loadBadWords;
+
+// ===== MONITOREO EN VIVO =====
+let isMonitoring = false;
+
+function startLiveMonitor() {
+  isMonitoring = true;
+  socket.emit('startLiveMonitoring');
+  document.getElementById('startMonitorBtn').style.display = 'none';
+  document.getElementById('stopMonitorBtn').style.display = 'block';
+  document.getElementById('liveMessageFeed').style.display = 'block';
+  document.getElementById('liveMessageFeed').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">Esperando mensajes...</div>';
+  showToast('Monitoreo en vivo iniciado', 'success');
+}
+
+function stopLiveMonitor() {
+  isMonitoring = false;
+  socket.emit('stopLiveMonitoring');
+  document.getElementById('startMonitorBtn').style.display = 'block';
+  document.getElementById('stopMonitorBtn').style.display = 'none';
+  showToast('Monitoreo detenido', 'warning');
+}
+
+socket.on('liveMessage', (msg) => {
+  if (!isMonitoring) return;
+  
+  const feed = document.getElementById('liveMessageFeed');
+  if (!feed) return;
+  
+  if (feed.querySelector('div[style*="Esperando mensajes"]')) {
+    feed.innerHTML = '';
+  }
+  
+  const time = new Date(msg.time).toLocaleTimeString('es-ES');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'live-message';
+  msgDiv.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <strong style="color:var(--primary)">${msg.username}</strong>
+      <span style="font-size:0.75rem;color:var(--text-secondary)">${time} - #${msg.room}</span>
+    </div>
+    <div style="color:var(--text-primary)">${msg.message || '[imagen]'}</div>
+  `;
+  
+  feed.insertBefore(msgDiv, feed.firstChild);
+  
+  // Limitar a 50 mensajes
+  while (feed.children.length > 50) {
+    feed.removeChild(feed.lastChild);
+  }
+});
+
+window.startLiveMonitor = startLiveMonitor;
+window.stopLiveMonitor = stopLiveMonitor;
+
+// ===== ANALÍTICAS =====
+let analyticsData = null;
+
+function loadAnalytics() {
+  socket.emit('getLiveStats');
+  showToast('Cargando estadísticas...', 'success');
+}
+
+socket.on('liveStats', (stats) => {
+  analyticsData = stats;
+  renderAnalytics();
+});
+
+function renderAnalytics() {
+  if (!analyticsData) return;
+  
+  // Actualizar contadores
+  document.getElementById('totalMessagesCount').textContent = analyticsData.messageCount || 0;
+  
+  const avgMsgs = analyticsData.totalUsers > 0 
+    ? Math.round(analyticsData.messageCount / analyticsData.totalUsers) 
+    : 0;
+  document.getElementById('avgMessagesPerUser').textContent = avgMsgs;
+  
+  const mostActive = analyticsData.activeRooms
+    .sort((a, b) => b.users - a.users)[0];
+  document.getElementById('mostActiveRoom').textContent = mostActive ? `#${mostActive.name}` : '-';
+  
+  // Gráfico de salas
+  const roomChart = document.getElementById('roomChart');
+  if (roomChart) {
+    roomChart.innerHTML = '';
+    const maxUsers = Math.max(...analyticsData.activeRooms.map(r => r.users), 1);
+    
+    analyticsData.activeRooms.forEach(room => {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const height = (room.users / maxUsers) * 100;
+      bar.style.height = `${height}%`;
+      
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      label.textContent = `#${room.name}`;
+      
+      const value = document.createElement('div');
+      value.className = 'bar-value';
+      value.textContent = room.users;
+      
+      bar.appendChild(value);
+      bar.appendChild(label);
+      roomChart.appendChild(bar);
+    });
+  }
+  
+  // Gráfico de actividad reciente
+  const activityChart = document.getElementById('activityChart');
+  if (activityChart && analyticsData.recentActivity) {
+    activityChart.innerHTML = '';
+    const activity = analyticsData.recentActivity.slice(-10);
+    
+    activity.forEach((msg, idx) => {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = `${(idx + 1) * 10}%`;
+      
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      label.textContent = msg.username.substring(0, 8);
+      
+      bar.appendChild(label);
+      activityChart.appendChild(bar);
+    });
+  }
+  
+  showToast('Estadísticas actualizadas', 'success');
+}
+
+window.loadAnalytics = loadAnalytics;

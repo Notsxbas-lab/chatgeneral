@@ -144,6 +144,21 @@
       .promote-btn:hover{background:var(--primary-dark)}
       .demote-btn{background:#ff9800;color:white}
       .demote-btn:hover{background:#f57c00}
+      .chart-container{background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+      .chart{width:100%;height:300px;position:relative}
+      .bar-chart{display:flex;align-items:flex-end;justify-content:space-around;height:100%;gap:8px}
+      .bar{flex:1;background:linear-gradient(180deg,var(--primary),var(--primary-dark));border-radius:8px 8px 0 0;min-height:20px;position:relative;transition:all 0.3s}
+      .bar:hover{opacity:0.8;transform:translateY(-5px)}
+      .bar-label{position:absolute;bottom:-25px;left:50%;transform:translateX(-50%);font-size:0.75rem;color:var(--text-secondary)}
+      .bar-value{position:absolute;top:-25px;left:50%;transform:translateX(-50%);font-weight:600;color:var(--text-primary)}
+      .live-feed{max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg-light)}
+      .live-message{padding:12px;border-bottom:1px solid var(--border);animation:slideIn 0.3s ease}
+      .live-message:last-child{border-bottom:none}
+      @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+      .word-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+      .word-badge{background:var(--danger);color:white;padding:6px 12px;border-radius:12px;font-size:0.85rem;display:flex;align-items:center;gap:6px}
+      .word-badge button{background:rgba(255,255,255,0.3);border:none;color:white;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:0.7rem}
+      .word-badge button:hover{background:rgba(255,255,255,0.5)}
     </style>
   </head>
 
@@ -182,6 +197,9 @@
         <div class="nav-menu-item" onclick="showSection('announce')">📣 Anuncios</div>
         <div class="nav-menu-item" onclick="showSection('reports')">🚨 Reportes</div>
         <div class="nav-menu-item" onclick="showSection('mute')">🔇 Silenciar</div>
+        <div class="nav-menu-item" onclick="showSection('filter')">🚫 Filtro de Palabras</div>
+        <div class="nav-menu-item" onclick="showSection('live')">🔴 Monitoreo en Vivo</div>
+        <div class="nav-menu-item" onclick="showSection('analytics')">📈 Análisis</div>
         <div class="nav-menu-item" onclick="showSection('ban')">🚫 Ban / Kick</div>
         <div class="nav-menu-item" onclick="showSection('password')">🔐 Contraseña Admin</div>
       </div>
