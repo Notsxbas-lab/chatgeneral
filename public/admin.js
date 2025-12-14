@@ -745,6 +745,8 @@ function showSection(sectionName) {
     loadAnalytics();
   } else if (sectionName === 'chat') {
     socket.emit('getRulesText');
+  } else if (sectionName === 'rules') {
+    socket.emit('getRulesText');
   }
 }
 
