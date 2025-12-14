@@ -29,7 +29,6 @@ function submitAdminLogin() {
     return;
   }
 
-  // Verificar conexión del socket
   if (!socket.connected) {
     loginError.textContent = 'Conectando al servidor...';
     loginError.classList.add('show');
@@ -37,7 +36,6 @@ function submitAdminLogin() {
     return;
   }
 
-  // Enviar usuario y contraseña al servidor para validar
   socket.emit('adminLogin', { username, password }, (response) => {
     console.log('Respuesta del servidor:', response);
     if (response && response.success) {
@@ -57,10 +55,8 @@ function submitAdminLogin() {
   });
 }
 
-// Event listeners
 adminLoginBtn.addEventListener('click', submitAdminLogin);
 
-// Permitir login con Enter
 adminLoginUsername.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') adminLoginPassword.focus();
 });
@@ -106,7 +102,6 @@ let adminUsers = [];
 socket.on('connect', () => {
   console.log('Admin conectado');
   if (isLoggedIn) {
-    // Auto-relogin on reconnect
     const storedUsername = sessionStorage.getItem('adminUsername');
     const storedPassword = sessionStorage.getItem('adminPassword');
     if (storedUsername && storedPassword) {
@@ -116,7 +111,6 @@ socket.on('connect', () => {
           requestAdminData();
         } else {
           console.log('Auto-relogin failed');
-          // Clear stored credentials if password changed
           sessionStorage.removeItem('adminLoggedIn');
           sessionStorage.removeItem('adminUsername');
           sessionStorage.removeItem('adminPassword');
@@ -419,6 +413,12 @@ function changeUserRole(userId, newRole) {
 }
 
 function demoteAdmin(userId, username) {
+  if (typeof userId === 'string' && !userId.includes('-')) {
+    if (confirm(`¿Remover permisos de administrador de ${username}?`)) {
+      socket.emit('demoteAdmin', { userId });
+    }
+    return;
+  }
   if (confirm(`¿Remover permisos de administrador de ${username}?`)) {
     socket.emit('demoteAdmin', { userId });
   }
@@ -433,7 +433,6 @@ function addAdminByName() {
     return;
   }
   
-  // Registrar admin directamente sin necesidad de que esté conectado
   socket.emit('registerAdmin', { username, role });
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
@@ -502,7 +501,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Initial load - solo si está logged in
+// Initial load
 if (isLoggedIn) {
   requestAdminData();
 }
