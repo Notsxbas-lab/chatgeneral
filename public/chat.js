@@ -274,6 +274,11 @@ function escapeHtml(s) {
 }
 
 function renderRooms() {
+  if (rooms.size === 0) {
+    rooms.set('global', { locked: false, adminOnly: false, isRules: false });
+    rooms.set('ayudas', { locked: false, adminOnly: true, isRules: false });
+    rooms.set('reglas', { locked: false, adminOnly: false, isRules: true });
+  }
   roomsContainer.innerHTML = '<div class="room-label">Salas</div>';
   rooms.forEach((meta, room) => {
     const el = document.createElement('div');
@@ -455,9 +460,15 @@ socket.on('disconnect', (reason) => {
 
 socket.on('roomsUpdated', (roomList = []) => {
   rooms.clear();
-  roomList.forEach((r) => {
-    rooms.set(r.name, { locked: !!r.locked, adminOnly: !!r.adminOnly, isRules: !!r.isRules });
-  });
+  if (!roomList || roomList.length === 0) {
+    rooms.set('global', { locked: false, adminOnly: false, isRules: false });
+    rooms.set('ayudas', { locked: false, adminOnly: true, isRules: false });
+    rooms.set('reglas', { locked: false, adminOnly: false, isRules: true });
+  } else {
+    roomList.forEach((r) => {
+      rooms.set(r.name, { locked: !!r.locked, adminOnly: !!r.adminOnly, isRules: !!r.isRules });
+    });
+  }
   renderRooms();
 });
 
