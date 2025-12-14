@@ -163,30 +163,7 @@ function appendMessage(data) {
 
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
-  
-  let metaHTML = data.username;
-  
-  // Agregar nivel si existe
-  if (data.level && data.level > 0) {
-    metaHTML += `<span class="level-badge">🏅 Nivel ${data.level}</span>`;
-  }
-  
-  // Agregar badges si existen
-  if (data.badges && data.badges.length > 0) {
-    const badgeIcons = {
-      'first-message': '🎖️',
-      'chatty': '💬',
-      'veteran': '👑',
-      'night-owl': '🦉'
-    };
-    data.badges.forEach(badge => {
-      const icon = badgeIcons[badge] || '⭐';
-      metaHTML += `<span class="badge" title="${badge}">${icon}</span>`;
-    });
-  }
-  
-  metaHTML += ` • ${new Date(data.time).toLocaleTimeString()}`;
-  meta.innerHTML = metaHTML;
+  meta.textContent = `${data.username} • ${new Date(data.time).toLocaleTimeString()}`;
 
   const content = document.createElement('div');
   content.innerHTML = processMentions(escapeHtml(data.message));
@@ -313,13 +290,6 @@ setNameBtn.addEventListener('click', () => {
   const name = usernameInput.value.trim();
   if (!name) return alert('Introduce un nombre');
   username = name;
-  // Guardar nombre y perfil en localStorage
-  try { 
-    localStorage.setItem('chat_username', username);
-    localStorage.setItem('chat_profileColor', profileColor);
-    localStorage.setItem('chat_profileEmoji', profileEmojis);
-    localStorage.setItem('chat_bgColor', bgColor);
-  } catch (e) {}
   profileName.value = name;
   userDisplay.textContent = username;
   profileBtn.style.display = 'block';
@@ -362,13 +332,6 @@ saveProfileBtn.addEventListener('click', () => {
   username = newName;
   profileEmojis = profileEmoji.value || '😊';
   userDisplay.textContent = username;
-  // Guardar cambios de perfil en localStorage
-  try {
-    localStorage.setItem('chat_username', username);
-    localStorage.setItem('chat_profileColor', profileColor);
-    localStorage.setItem('chat_profileEmoji', profileEmojis);
-    localStorage.setItem('chat_bgColor', bgColor);
-  } catch (e) {}
   socket.emit('updateProfile', { username, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
   profileOverlay.style.display = 'none';
   messages.style.background = bgColor;
@@ -847,281 +810,15 @@ function reportMessage(messageId, messageText) {
 }
 window.reportMessage = reportMessage;
 
-// ==================== NIVELES Y BADGES ====================
-let userLevelData = { xp: 0, level: 0, badges: [] };
-
-socket.on('userLevelData', (data) => {
-  userLevelData = data;
-  updateUserDisplay();
-});
-
-socket.on('levelUp', (data) => {
-  showLevelUpNotification(data.newLevel);
-  createParticles('🎉', 20);
-  userLevelData.level = data.newLevel;
-  updateUserDisplay();
-});
-
-socket.on('badgeEarned', (data) => {
-  showBadgeNotification(data.badge);
-  createParticles('⭐', 15);
-  if (!userLevelData.badges) userLevelData.badges = [];
-  if (!userLevelData.badges.includes(data.badge)) {
-    userLevelData.badges.push(data.badge);
-  }
-  updateUserDisplay();
-});
-
-function updateUserDisplay() {
-  let display = username;
-  if (userLevelData.level > 0) {
-    display += ` 🏅 Nivel ${userLevelData.level}`;
-  }
-  userDisplay.innerHTML = display;
-}
-
-function showLevelUpNotification(level) {
-  const notif = document.createElement('div');
-  notif.className = 'levelup-notification';
-  notif.textContent = `¡Nivel ${level}! 🎊`;
-  document.body.appendChild(notif);
-  setTimeout(() => notif.remove(), 2000);
-}
-
-function showBadgeNotification(badge) {
-  const badges = {
-    'first-message': { icon: '🎖️', name: 'Primera Palabra' },
-    'chatty': { icon: '💬', name: 'Conversador' },
-    'veteran': { icon: '👑', name: 'Veterano' },
-    'night-owl': { icon: '🦉', name: 'Búho Nocturno' }
-  };
-  const b = badges[badge] || { icon: '⭐', name: badge };
-  const notif = document.createElement('div');
-  notif.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:16px 24px;border-radius:12px;font-weight:600;z-index:9999;animation:slideIn 0.3s ease';
-  notif.textContent = `${b.icon} ¡Insignia desbloqueada: ${b.name}!`;
-  document.body.appendChild(notif);
-  setTimeout(() => notif.remove(), 3000);
-}
-
-function createParticles(emoji, count) {
-  for (let i = 0; i < count; i++) {
-    const particle = document.createElement('div');
-    particle.className = 'particle';
-    particle.textContent = emoji;
-    particle.style.left = Math.random() * 100 + 'vw';
-    particle.style.top = Math.random() * 100 + 'vh';
-    particle.style.fontSize = (Math.random() * 20 + 15) + 'px';
-    document.body.appendChild(particle);
-    setTimeout(() => particle.remove(), 3000);
-  }
-}
-
-// ==================== ENCUESTAS ====================
-const rankingBtn = document.getElementById('rankingBtn');
-const createPollBtn = document.getElementById('createPollBtn');
-const pollModal = document.getElementById('pollModal');
-const rankingModal = document.getElementById('rankingModal');
-
-createPollBtn.addEventListener('click', () => {
-  pollModal.classList.add('show');
-});
-
-function closePollModal() {
-  pollModal.classList.remove('show');
-  document.getElementById('pollQuestion').value = '';
-  document.getElementById('pollOption1').value = '';
-  document.getElementById('pollOption2').value = '';
-  document.getElementById('pollOption3').value = '';
-  document.getElementById('pollOption4').value = '';
-}
-window.closePollModal = closePollModal;
-
-function createPoll() {
-  const question = document.getElementById('pollQuestion').value.trim();
-  const option1 = document.getElementById('pollOption1').value.trim();
-  const option2 = document.getElementById('pollOption2').value.trim();
-  const option3 = document.getElementById('pollOption3').value.trim();
-  const option4 = document.getElementById('pollOption4').value.trim();
-  
-  const options = [option1, option2, option3, option4].filter(o => o);
-  
-  if (!question || options.length < 2) {
-    alert('Necesitas al menos una pregunta y 2 opciones');
-    return;
-  }
-  
-  socket.emit('createPoll', { question, options, room: currentRoom });
-  closePollModal();
-}
-window.createPoll = createPoll;
-
-socket.on('newPoll', (poll) => {
-  displayPoll(poll);
-});
-
-socket.on('pollUpdated', (poll) => {
-  const existingPoll = document.querySelector(`[data-poll-id="${poll.id}"]`);
-  if (existingPoll) existingPoll.remove();
-  displayPoll(poll);
-});
-
-function displayPoll(poll) {
-  const pollDiv = document.createElement('div');
-  pollDiv.className = 'poll-container';
-  pollDiv.setAttribute('data-poll-id', poll.id);
-  
-  let html = `<div class="poll-question">${escapeHtml(poll.question)}</div>`;
-  const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes, 0);
-  
-  poll.options.forEach((opt, idx) => {
-    const percentage = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
-    const userVoted = opt.voters && opt.voters.includes(socket.id);
-    const voted = userVoted ? 'voted' : '';
-    html += `<div class="poll-option ${voted}" onclick="votePoll('${poll.id}', ${idx})" style="cursor:pointer">
-      <span>${escapeHtml(opt.text)}</span>
-      <span class="poll-votes">${opt.votes} (${percentage}%)</span>
-    </div>`;
-  });
-  
-  pollDiv.innerHTML = html;
-  messages.appendChild(pollDiv);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function votePoll(pollId, optionIndex) {
-  socket.emit('votePoll', { pollId, optionIndex, room: currentRoom });
-}
-window.votePoll = votePoll;
-
-// ==================== RANKING ====================
-rankingBtn.addEventListener('click', () => {
-  socket.emit('getRanking');
-});
-
-socket.on('ranking', (ranking) => {
-  displayRanking(ranking);
-});
-
-function displayRanking(ranking) {
-  const rankingList = document.getElementById('rankingList');
-  rankingList.innerHTML = '';
-  
-  ranking.forEach((user, idx) => {
-    const item = document.createElement('div');
-    item.className = 'ranking-item';
-    
-    let position = idx + 1;
-    let medal = '';
-    if (position === 1) medal = '🥇';
-    else if (position === 2) medal = '🥈';
-    else if (position === 3) medal = '🥉';
-    
-    item.innerHTML = `
-      <div class="ranking-position">${medal || position}</div>
-      <div class="ranking-info">
-        <div class="ranking-username">${escapeHtml(user.username)}</div>
-        <div class="ranking-stats">Nivel ${user.level} • ${user.xp} XP • ${user.badges.length} insignias</div>
-      </div>
-    `;
-    rankingList.appendChild(item);
-  });
-  
-  rankingModal.classList.add('show');
-}
-
-function closeRanking() {
-  rankingModal.classList.remove('show');
-}
-window.closeRanking = closeRanking;
-
-// ==================== JUEGO PIEDRA PAPEL TIJERA ====================
-const rpsModal = document.getElementById('rpsModal');
-let currentGameId = null;
-
-socket.on('gameInvite', (data) => {
-  if (confirm(`${data.challenger} te desafía a Piedra, Papel o Tijera. ¿Aceptas?`)) {
-    socket.emit('acceptGame', { gameId: data.gameId });
-  }
-});
-
-socket.on('gameStart', (data) => {
-  currentGameId = data.gameId;
-  document.getElementById('rpsStatus').textContent = `Jugando contra ${data.opponent}. ¡Elige!`;
-  document.getElementById('rpsChoices').style.display = 'flex';
-  document.getElementById('rpsResult').style.display = 'none';
-  rpsModal.classList.add('show');
-});
-
-socket.on('gameResult', (data) => {
-  const resultText = data.winner === socket.id ? 
-    `¡Ganaste! 🎉 Tu: ${data.choices[socket.id]} vs ${data.opponent}: ${data.choices[data.opponentId]}` :
-    data.winner === 'tie' ?
-    `¡Empate! Ambos: ${data.choices[socket.id]}` :
-    `Perdiste 😢 Tu: ${data.choices[socket.id]} vs ${data.opponent}: ${data.choices[data.opponentId]}`;
-  
-  document.getElementById('rpsResult').textContent = resultText;
-  document.getElementById('rpsResult').style.display = 'block';
-  document.getElementById('rpsChoices').style.display = 'none';
-  
-  if (data.winner === socket.id) {
-    createParticles('🎉', 25);
-  }
-});
-
-function makeRPSChoice(choice) {
-  if (currentGameId) {
-    socket.emit('makeMove', { gameId: currentGameId, choice });
-    document.getElementById('rpsStatus').textContent = 'Esperando al oponente...';
-    document.getElementById('rpsChoices').style.display = 'none';
-  }
-}
-window.makeRPSChoice = makeRPSChoice;
-
-function closeRPSModal() {
-  rpsModal.classList.remove('show');
-  currentGameId = null;
-}
-window.closeRPSModal = closeRPSModal;
-
-// ==================== RESPUESTAS DE COMANDOS ====================
-socket.on('commandResponse', (data) => {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'command-response';
-  msgDiv.textContent = data.response;
-  messages.appendChild(msgDiv);
-  messages.scrollTop = messages.scrollHeight;
-});
-
 // If a name is stored, auto-join; otherwise show modal and focus input so user types their name
 (function ensureNameOrPrompt() {
   try {
-    const stored = localStorage.getItem('chat_username');
-    if (stored) {
-      username = stored;
-      profileColor = localStorage.getItem('chat_profileColor') || profileColor;
-      profileEmojis = localStorage.getItem('chat_profileEmoji') || profileEmojis;
-      bgColor = localStorage.getItem('chat_bgColor') || bgColor;
-      
-      usernameInput.value = username;
-      profileName.value = username;
-      profileEmoji.value = profileEmojis;
-      userDisplay.textContent = username;
-      profileBtn.style.display = 'block';
-      messages.style.background = bgColor;
-      
-      initColorPicker();
-      initBgColorPicker();
-      updateProfilePreview();
-      socket.emit('join', { username, room: currentRoom, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
-      overlay.style.display = 'none';
-    } else {
-      overlay.style.display = 'flex';
-      // focus the input for quick entry and allow Enter key
-      setTimeout(() => usernameInput.focus(), 50);
-      usernameInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') setNameBtn.click();
-      });
-    }
+    overlay.style.display = 'flex';
+    // focus the input for quick entry and allow Enter key
+    setTimeout(() => usernameInput.focus(), 50);
+    usernameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') setNameBtn.click();
+    });
   } catch (e) {
     console.error('Name check failed', e);
   }

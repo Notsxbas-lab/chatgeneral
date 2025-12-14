@@ -26,14 +26,6 @@ const pinnedMessages = new Map(); // room -> mensaje fijado
 const moderationLogs = []; // Logs de acciones de moderación
 const MAX_LOGS = 200;
 
-// Sistema de niveles y gamificación
-const userLevels = new Map(); // userId -> { xp, level, badges, messageCount, joinDate }
-const userStats = new Map(); // userId -> { totalMessages, wordCount, reactions, etc }
-const activePolls = new Map(); // pollId -> { question, options, votes, creator, room }
-const userNicknames = new Map(); // userId -> [array de nicknames anteriores]
-const gameRooms = new Map(); // gameId -> { type, players, state }
-const reminders = []; // { userId, message, time }
-
 // Estadísticas globales
 const globalStats = {
   totalMessages: 0,
@@ -44,14 +36,6 @@ const globalStats = {
     fastestTyper: { username: '', wpm: 0 },
     mostActiveDay: { date: '', count: 0 }
   }
-};
-
-// Respuestas automáticas del bot
-const botResponses = {
-  'hola': ['¡Hola! 👋 ¿Cómo estás?', '¡Qué tal! 😊', '¡Saludos! ✨'],
-  'ayuda': ['Escribe /help para ver todos los comandos disponibles 📚'],
-  'chiste': ['¿Por qué los programadores prefieren el modo oscuro? ¡Porque la luz atrae bugs! 🐛😂'],
-  'adios': ['¡Hasta luego! 👋', 'Nos vemos pronto 😊', '¡Vuelve pronto! ✨']
 };
 
 // Helper: Agregar log de moderación
@@ -67,127 +51,6 @@ function addModerationLog(action, admin, details) {
     moderationLogs.shift();
   }
   io.to('admin').emit('newModerationLog', moderationLogs[moderationLogs.length - 1]);
-}
-
-// Helper: Sistema de niveles
-function calculateLevel(xp) {
-  return Math.floor(Math.sqrt(xp / 100));
-}
-
-function addXP(userId, amount) {
-  if (!userLevels.has(userId)) {
-    userLevels.set(userId, {
-      xp: 0,
-      level: 0,
-      badges: [],
-      messageCount: 0,
-      joinDate: Date.now()
-    });
-  }
-  
-  const userData = userLevels.get(userId);
-  userData.xp += amount;
-  userData.messageCount++;
-  const newLevel = calculateLevel(userData.xp);
-  
-  if (newLevel > userData.level) {
-    userData.level = newLevel;
-    return { levelUp: true, newLevel };
-  }
-  
-  return { levelUp: false };
-}
-
-function checkAndAwardBadges(userId, username) {
-  const userData = userLevels.get(userId);
-  if (!userData) return [];
-  
-  const newBadges = [];
-  
-  // Badge: Primer mensaje
-  if (userData.messageCount === 1 && !userData.badges.includes('first-message')) {
-    userData.badges.push('first-message');
-    newBadges.push({ id: 'first-message', name: 'Primer Mensaje', icon: '👶' });
-  }
-  
-  // Badge: Charlatán (100 mensajes)
-  if (userData.messageCount >= 100 && !userData.badges.includes('chatty')) {
-    userData.badges.push('chatty');
-    newBadges.push({ id: 'chatty', name: 'Charlatán', icon: '💬' });
-  }
-  
-  // Badge: Veterano (24 horas desde join)
-  const daysSinceJoin = (Date.now() - userData.joinDate) / (1000 * 60 * 60 * 24);
-  if (daysSinceJoin >= 1 && !userData.badges.includes('veteran')) {
-    userData.badges.push('veteran');
-    newBadges.push({ id: 'veteran', name: 'Veterano', icon: '🏆' });
-  }
-  
-  // Badge: Nocturno (mensaje entre 12am-6am)
-  const hour = new Date().getHours();
-  if (hour >= 0 && hour < 6 && !userData.badges.includes('night-owl')) {
-    userData.badges.push('night-owl');
-    newBadges.push({ id: 'night-owl', name: 'Búho Nocturno', icon: '🦉' });
-  }
-  
-  return newBadges;
-}
-
-// Helper: Respuestas automáticas
-function getBotResponse(message) {
-  const lower = message.toLowerCase().trim();
-  for (const [key, responses] of Object.entries(botResponses)) {
-    if (lower.includes(key)) {
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-  }
-  return null;
-}
-
-// Helper: Procesar comandos slash
-function processCommand(command, args, socket) {
-  switch(command) {
-    case 'help':
-      return '📚 Comandos: /help, /8ball, /dado, /trivia, /gif, /poll, /stats, /excusa, /nivel';
-    
-    case '8ball':
-      const responses = ['Sí', 'No', 'Tal vez', 'Sin duda', 'No cuentes con ello', 'Es probable', 'Pregunta después', 'Definitivamente sí'];
-      return `🔮 ${responses[Math.floor(Math.random() * responses.length)]}`;
-    
-    case 'dado':
-      return `🎲 Resultado: ${Math.floor(Math.random() * 6) + 1}`;
-    
-    case 'trivia':
-      const triviaQuestions = [
-        { q: '¿Cuál es la capital de Japón?', a: 'Tokio' },
-        { q: '¿Cuántos planetas hay en el sistema solar?', a: '8' },
-        { q: '¿Qué lenguaje se usa para la web?', a: 'JavaScript' }
-      ];
-      const trivia = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
-      return `🧠 ${trivia.q}`;
-    
-    case 'excusa':
-      const excuses = [
-        'Mi perro se comió mi tarea 🐶',
-        'Se me olvidó porque pensé en ello mañana 🤔',
-        'Mi abuela necesitaba ayuda... con Minecraft 👵',
-        'Se fue la luz... en mi cerebro 💡'
-      ];
-      return excuses[Math.floor(Math.random() * excuses.length)];
-    
-    case 'nivel':
-      const userData = userLevels.get(socket.id);
-      if (userData) {
-        return `⭐ Nivel: ${userData.level} | XP: ${userData.xp} | Mensajes: ${userData.messageCount}`;
-      }
-      return 'Aún no tienes nivel. ¡Escribe más para ganar XP!';
-    
-    case 'stats':
-      return `📊 Mensajes totales: ${globalStats.totalMessages} | Usuarios activos: ${connectedUsers.size}`;
-    
-    default:
-      return null;
-  }
 }
 
 // Roles y Permisos
@@ -286,17 +149,6 @@ io.on('connection', (socket) => {
     socket.ip = clientIp;
     socket.join(socket.room);
 
-    // Inicializar datos de usuario
-    if (!userLevels.has(socket.id)) {
-      userLevels.set(socket.id, {
-        xp: 0,
-        level: 0,
-        badges: [],
-        messageCount: 0,
-        joinDate: Date.now()
-      });
-    }
-
     // Store in connected users map
     connectedUsers.set(socket.id, {
       id: socket.id,
@@ -311,10 +163,6 @@ io.on('connection', (socket) => {
 
     socket.to(socket.room).emit('system', `${socket.username} se ha unido a ${socket.room}.`);
     socket.emit('roomJoined', { room: socket.room });
-    
-    // Enviar datos de nivel al usuario
-    const userData = userLevels.get(socket.id);
-    socket.emit('userLevelData', userData);
 
     // Notify admin
     io.to('admin').emit('userConnected', {
@@ -360,34 +208,6 @@ io.on('connection', (socket) => {
     const text = (typeof msg === 'string') ? msg : (msg.text || msg.message || '');
     const lower = String(text).toLowerCase();
     
-    // Procesar comandos slash
-    if (text.startsWith('/')) {
-      const parts = text.slice(1).split(' ');
-      const command = parts[0];
-      const args = parts.slice(1);
-      const response = processCommand(command, args, socket);
-      if (response) {
-        socket.emit('commandResponse', { command, response });
-        return;
-      }
-    }
-    
-    // Sistema de XP y niveles
-    const xpResult = addXP(socket.id, 10);
-    if (xpResult.levelUp) {
-      socket.emit('levelUp', { level: xpResult.newLevel });
-      io.to(socket.room || 'global').emit('system', `🎉 ${socket.username} alcanzó el nivel ${xpResult.newLevel}!`);
-    }
-    
-    // Verificar badges
-    const newBadges = checkAndAwardBadges(socket.id, socket.username);
-    if (newBadges.length > 0) {
-      newBadges.forEach(badge => {
-        socket.emit('badgeEarned', { badge: badge.id });
-        io.to(socket.room || 'global').emit('system', `🏅 ${socket.username} ganó la insignia: ${badge.icon} ${badge.name}`);
-      });
-    }
-    
     // Actualizar estadísticas globales
     globalStats.totalMessages++;
     globalStats.activeHours[new Date().getHours()]++;
@@ -407,25 +227,6 @@ io.on('connection', (socket) => {
         username: socket.username,
         length: text.length
       };
-    }
-    
-    // Respuesta automática del bot
-    const botResponse = getBotResponse(text);
-    if (botResponse && Math.random() < 0.3) { // 30% probabilidad
-      setTimeout(() => {
-        io.to(socket.room || 'global').emit('message', {
-          id: `bot_${Date.now()}`,
-          socketId: 'bot',
-          username: '🤖 ChatBot',
-          message: botResponse,
-          time: Date.now(),
-          room: socket.room || 'global',
-          type: 'text',
-          avatarColor: '#00d084',
-          avatarEmoji: '🤖',
-          isBot: true
-        });
-      }, 1000);
     }
     
     // Filtro de palabras prohibidas mejorado
@@ -448,8 +249,6 @@ io.on('connection', (socket) => {
       avatarColor: socket.avatarColor || '#00b4d8',
       avatarEmoji: socket.avatarEmoji || '',
       profileImage: socket.profileImage || '',
-      level: userLevels.get(socket.id)?.level || 0,
-      badges: userLevels.get(socket.id)?.badges || [],
       bgColor: socket.bgColor || '#fafbff',
       reactions: {},
       replyTo: (typeof msg === 'object' && msg.replyTo) ? msg.replyTo : undefined
@@ -889,63 +688,6 @@ socket.on('adminSetPassword', ({ password }) => {
     socket.emit('liveStats', stats);
   });
   
-  // Crear encuesta
-  socket.on('createPoll', (data) => {
-    const pollId = `poll_${Date.now()}`;
-    activePolls.set(pollId, {
-      id: pollId,
-      question: data.question,
-      options: data.options.map((opt, idx) => ({ id: idx, text: opt, votes: 0, voters: [] })),
-      creator: socket.username,
-      room: socket.room || 'global',
-      createdAt: Date.now()
-    });
-    
-    io.to(socket.room || 'global').emit('newPoll', activePolls.get(pollId));
-  });
-  
-  // Votar en encuesta
-  socket.on('votePoll', (data) => {
-    const poll = activePolls.get(data.pollId);
-    if (poll && poll.options[data.optionIndex]) {
-      // Remover voto anterior si ya votó
-      poll.options.forEach(opt => {
-        const idx = opt.voters.indexOf(socket.id);
-        if (idx > -1) {
-          opt.voters.splice(idx, 1);
-          opt.votes--;
-        }
-      });
-      
-      // Agregar nuevo voto
-      const option = poll.options[data.optionIndex];
-      if (option && !option.voters.includes(socket.id)) {
-        option.voters.push(socket.id);
-        option.votes++;
-        io.to(poll.room).emit('pollUpdated', poll);
-      }
-    }
-  });
-  
-  // Obtener ranking
-  socket.on('getRanking', () => {
-    const ranking = Array.from(userLevels.entries())
-      .map(([id, data]) => {
-        const user = connectedUsers.get(id);
-        return {
-          username: user ? user.username : 'Usuario',
-          level: data.level,
-          xp: data.xp,
-          messageCount: data.messageCount,
-          badges: data.badges
-        };
-      })
-      .sort((a, b) => b.xp - a.xp)
-      .slice(0, 10);
-    
-    socket.emit('ranking', ranking);
-  });
-  
   // Obtener estadísticas globales
   socket.on('getGlobalStats', () => {
     const topWords = Array.from(globalStats.wordFrequency.entries())
@@ -959,80 +701,6 @@ socket.on('adminSetPassword', ({ password }) => {
       activeHours: globalStats.activeHours,
       records: globalStats.records
     });
-  });
-  
-  // Iniciar juego de piedra-papel-tijera
-  socket.on('startRPS', (data) => {
-    const gameId = `rps_${Date.now()}`;
-    gameRooms.set(gameId, {
-      type: 'rps',
-      players: [{ id: socket.id, username: socket.username, choice: null }],
-      opponent: data.opponent,
-      state: 'waiting'
-    });
-    
-    io.to(socket.room || 'global').emit('gameInvite', {
-      gameId,
-      type: 'rps',
-      from: socket.username,
-      to: data.opponent
-    });
-  });
-  
-  // Aceptar juego
-  socket.on('acceptGame', (data) => {
-    const game = gameRooms.get(data.gameId);
-    if (game && game.state === 'waiting') {
-      game.players.push({ id: socket.id, username: socket.username, choice: null });
-      game.state = 'playing';
-      
-      game.players.forEach(player => {
-        const sock = io.sockets.sockets.get(player.id);
-        if (sock) sock.emit('gameStart', { gameId: data.gameId, type: game.type });
-      });
-    }
-  });
-  
-  // Hacer jugada en juego
-  socket.on('makeMove', (data) => {
-    const game = gameRooms.get(data.gameId);
-    if (game && game.state === 'playing') {
-      const player = game.players.find(p => p.id === socket.id);
-      if (player) {
-        player.choice = data.choice;
-        
-        // Verificar si ambos jugaron
-        if (game.players.every(p => p.choice)) {
-          const [p1, p2] = game.players;
-          let winner = null;
-          
-          if (p1.choice === p2.choice) {
-            winner = 'tie';
-          } else if (
-            (p1.choice === 'piedra' && p2.choice === 'tijera') ||
-            (p1.choice === 'papel' && p2.choice === 'piedra') ||
-            (p1.choice === 'tijera' && p2.choice === 'papel')
-          ) {
-            winner = p1.username;
-          } else {
-            winner = p2.username;
-          }
-          
-          game.players.forEach(player => {
-            const sock = io.sockets.sockets.get(player.id);
-            if (sock) {
-              sock.emit('gameResult', {
-                gameId: data.gameId,
-                winner,
-                choices: game.players.map(p => ({ username: p.username, choice: p.choice }))
-              });
-            }
-          });
-          
-          gameRooms.delete(data.gameId);
-        }
-      }
-    }
   });
 
   // Monitoreo en tiempo real de mensajes
