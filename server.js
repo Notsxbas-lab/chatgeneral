@@ -309,12 +309,26 @@ io.on('connection', (socket) => {
     io.emit('system', '⏸️ El administrador pausó el chat');
   });
 
-  socket.on('adminSetPassword', ({ password }) => {
+  // Map para almacenar contraseñas individuales de admins
+let adminPasswords = new Map();
+
+socket.on('adminSetPassword', ({ password }) => {
     if (!socket.isAdmin) return;
     
     adminPassword = password;
     socket.emit('passwordSet');
-    console.log('Contraseña admin establecida');
+    console.log('Contraseña admin global establecida');
+  });
+
+  // Establecer contraseña para admin específico
+  socket.on('setAdminPassword', ({ adminId, password }) => {
+    if (!socket.isAdmin) return;
+    
+    if (!adminId || !password || password.length < 6) return;
+    
+    adminPasswords.set(adminId, password);
+    console.log(`Contraseña establecida para admin: ${adminId}`);
+    io.emit('adminPasswordUpdated', { adminId });
   });
 
   // Cambiar rol de usuario

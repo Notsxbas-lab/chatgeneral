@@ -88,6 +88,9 @@ const adminUsersList = document.getElementById('adminUsersList');
 const promoteModal = document.getElementById('promoteModal');
 const promoteUsername = document.getElementById('promoteUsername');
 const promoteRoleSelect = document.getElementById('promoteRoleSelect');
+const changeAdminPasswordModal = document.getElementById('changeAdminPasswordModal');
+const adminPasswordModalUsername = document.getElementById('adminPasswordModalUsername');
+const adminNewPassword = document.getElementById('adminNewPassword');
 
 // State
 let users = [];
@@ -96,6 +99,7 @@ let rooms = new Set();
 let chatRunning = true;
 let selectedUserId = null;
 let selectedPromoteUserId = null;
+let selectedAdminForPassword = null;
 let hasPassword = false;
 let adminUsers = [];
 
@@ -193,8 +197,10 @@ socket.on('passwordSet', () => {
 });
 
 socket.on('adminUsersList', (data) => {
+  console.log('Received admin users data:', data);
   adminUsers = data.admins || [];
-  renderAdminUsers(data.roles || []);
+  console.log('Updated adminUsers:', adminUsers);
+  renderAdminUsers(data.roles || ['Mod Junior', 'Mod', 'Admin', 'Dueño']);
 });
 
 socket.on('userPromoted', (data) => {
@@ -359,7 +365,8 @@ function loadAdminUsers() {
 }
 
 function renderAdminUsers(availableRoles) {
-  if (adminUsers.length === 0) {
+  console.log('Admin users to render:', adminUsers);
+  if (!adminUsers || adminUsers.length === 0) {
     adminUsersList.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem;padding:12px">No hay administradores asignados</p>';
     return;
   }
@@ -367,19 +374,20 @@ function renderAdminUsers(availableRoles) {
   adminUsersList.innerHTML = `
     <div class="admin-users-list">
       ${adminUsers.map(admin => {
-        const roleClass = admin.role.toLowerCase().replace(' ', '-');
+        const roleClass = (admin.role || '').toLowerCase().replace(/\s+/g, '-');
         return `
-          <div class="admin-user-item">
+          <div class="admin-user-item" style="padding:12px;background:var(--bg-light);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
             <div class="admin-user-info">
-              <div class="name">${admin.username}</div>
-              <span class="role-badge ${roleClass}">${admin.role}</span>
+              <div class="name" style="font-weight:600">${admin.username}</div>
+              <span class="role-badge ${roleClass}" style="display:inline-block;padding:4px 8px;background:var(--primary);color:white;border-radius:4px;font-size:0.8rem">${admin.role}</span>
             </div>
-            <div class="admin-user-actions">
-              <select class="role-select" onchange="changeUserRole('${admin.id}', this.value)">
-                <option value="">Cambiar rol...</option>
+            <div class="admin-user-actions" style="display:flex;gap:8px">
+              <button onclick="openAdminPasswordModal('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--accent);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">🔐 Contraseña</button>
+              <select class="role-select" onchange="changeUserRole('${admin.id}', this.value)" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-size:0.85rem">
+                <option value="">Cambiar rol</option>
                 ${availableRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
               </select>
-              <button class="demote-btn" onclick="demoteAdmin('${admin.id}', '${admin.username}')">⬇️ Degradar</button>
+              <button class="demote-btn" onclick="demoteAdmin('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">⬇️ Quitar</button>
             </div>
           </div>
         `;
@@ -397,6 +405,35 @@ function openPromoteModal(userId, username) {
 function closePromoteModal() {
   promoteModal.classList.remove('active');
   selectedPromoteUserId = null;
+}
+
+function openAdminPasswordModal(adminId, adminUsername) {
+  selectedAdminForPassword = adminId;
+  adminPasswordModalUsername.textContent = adminUsername;
+  changeAdminPasswordModal.classList.add('active');
+  adminNewPassword.value = '';
+  adminNewPassword.focus();
+}
+
+function closeAdminPasswordModal() {
+  changeAdminPasswordModal.classList.remove('active');
+  selectedAdminForPassword = null;
+  adminNewPassword.value = '';
+}
+
+function confirmChangeAdminPassword() {
+  const newPassword = adminNewPassword.value.trim();
+  if (!newPassword) {
+    showToast('Ingresa una contraseña', 'error');
+    return;
+  }
+  if (newPassword.length < 6) {
+    showToast('Mínimo 6 caracteres', 'error');
+    return;
+  }
+  socket.emit('setAdminPassword', { adminId: selectedAdminForPassword, password: newPassword });
+  closeAdminPasswordModal();
+  showToast('Contraseña actualizada', 'success');
 }
 
 function confirmPromote() {
@@ -436,10 +473,11 @@ function addAdminByName() {
     showToast('Ingresa un nombre de usuario', 'error');
     return;
   }
-  
+  console.log('Registering admin:', username, role);
   socket.emit('registerAdmin', { username, role });
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
+  setTimeout(() => loadAdminUsers(), 10mo ${role}`, 'success');
   setTimeout(() => loadAdminUsers(), 500);
 }
 
@@ -497,11 +535,17 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && promoteModal.classList.contains('active')) {
     closePromoteModal();
   }
+  if (e.key === 'Escape' && changeAdminPasswordModal.classList.contains('active')) {
+    closeAdminPasswordModal();
+  }
   if (e.key === 'Enter' && changeNameModal.classList.contains('active')) {
     confirmChangeName();
   }
   if (e.key === 'Enter' && promoteModal.classList.contains('active')) {
     confirmPromote();
+  }
+  if (e.key === 'Enter' && changeAdminPasswordModal.classList.contains('active')) {
+    confirmChangeAdminPassword();
   }
 });
 

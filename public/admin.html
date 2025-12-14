@@ -270,6 +270,18 @@
       </div>
     </div>
 
+    <!-- Modal para cambiar contraseña de admin -->
+    <div id="changeAdminPasswordModal" class="modal-overlay">
+      <div class="modal-dialog">
+        <h3>Cambiar Contraseña - <span id="adminPasswordModalUsername"></span></h3>
+        <input id="adminNewPassword" type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px;font-family:inherit">
+        <div class="modal-buttons">
+          <button class="cancel" onclick="closeAdminPasswordModal()">Cancelar</button>
+          <button class="confirm" onclick="confirmChangeAdminPassword()">Cambiar Contraseña</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast para notificaciones -->
     <div id="toast" class="toast">
       <span id="toastMessage"></span>
