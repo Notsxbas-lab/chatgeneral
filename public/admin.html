@@ -95,16 +95,37 @@
       .toast.warning{border-left:4px solid var(--warning)}
       @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
 
-      /* Menú desplegable navegación */
-      .nav-menu{position:fixed;top:96px;left:20px;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.12);z-index:200;width:260px}
-      .nav-menu-toggle{background:var(--primary);color:white;padding:14px 20px;cursor:pointer;font-weight:600;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:1.05rem}
-      .nav-menu-toggle:hover{background:var(--primary-dark)}
-      .nav-menu-items{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
-      .nav-menu-items.active{max-height:600px;overflow-y:auto}
-      .nav-menu-item{padding:14px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s;font-weight:500;font-size:0.95rem}
-      .nav-menu-item:last-child{border-bottom:none;border-radius:0 0 8px 8px}
-      .nav-menu-item:hover{background:var(--bg-light);padding-left:25px}
-      .nav-menu-item.active{background:var(--primary);color:white;font-weight:600}
+      /* Menú desplegable navegación - Estilo mejorado */
+      .nav-menu{position:fixed;top:96px;left:20px;background:white;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.15);z-index:200;width:280px;overflow:hidden}
+      .nav-menu-toggle{background:linear-gradient(135deg,var(--danger) 0%,#b71c1c 100%);color:white;padding:16px 20px;cursor:pointer;font-weight:700;display:flex;justify-content:space-between;align-items:center;font-size:1.1rem;transition:all 0.3s;user-select:none}
+      .nav-menu-toggle:hover{background:linear-gradient(135deg,#d32f2f,#a71818);transform:translateX(4px);box-shadow:0 4px 12px rgba(211,47,47,0.2)}
+      .nav-menu-toggle span:first-child{display:flex;align-items:center;gap:8px}
+      .nav-menu-icon{font-size:0.8rem;transition:transform 0.3s;display:inline-block}
+      .nav-menu-icon.rotated{transform:rotate(180deg)}
+      .nav-menu-items{max-height:0;overflow:hidden;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1)}
+      .nav-menu-items.active{max-height:800px;overflow-y:auto}
+      .nav-menu-item{padding:14px 20px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:all 0.2s;font-weight:500;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:10px;position:relative}
+      .nav-menu-item:last-child{border-bottom:none}
+      .nav-menu-item:hover{background:linear-gradient(90deg,rgba(211,47,47,0.08),transparent);padding-left:28px;color:var(--danger);font-weight:600}
+      .nav-menu-item.active{background:linear-gradient(90deg,var(--danger),rgba(211,47,47,0.15));color:var(--danger);font-weight:700;border-left:4px solid var(--danger);padding-left:16px}
+      .nav-menu-item::before{content:'';width:4px;height:4px;background:var(--danger);border-radius:50%;opacity:0;transition:opacity 0.2s}
+      .nav-menu-item:hover::before{opacity:0.6}
+      .nav-menu-item.active::before{opacity:1}
+
+      /* Scroll personalizado del menú */
+      .nav-menu-items::-webkit-scrollbar{width:6px}
+      .nav-menu-items::-webkit-scrollbar-track{background:transparent}
+      .nav-menu-items::-webkit-scrollbar-thumb{background:var(--danger);border-radius:3px;opacity:0.3}
+      .nav-menu-items::-webkit-scrollbar-thumb:hover{opacity:0.6}
+
+      /* Animación de entrada del menú */
+      @keyframes menuSlideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+      .nav-menu-item{animation:menuSlideIn 0.3s ease forwards}
+      .nav-menu-item:nth-child(1){animation-delay:0.05s}
+      .nav-menu-item:nth-child(2){animation-delay:0.1s}
+      .nav-menu-item:nth-child(3){animation-delay:0.15s}
+      .nav-menu-item:nth-child(4){animation-delay:0.2s}
+      .nav-menu-item:nth-child(5){animation-delay:0.25s}
       .admin-section{display:none;background:white;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
       .admin-section.active{display:block}
 
@@ -185,23 +206,23 @@
     <!-- Menú de navegación desplegable -->
     <div class="nav-menu">
       <div class="nav-menu-toggle" onclick="toggleNavMenu()">
-        <span>📋 Menú</span>
+        <span>☰ Menú Admin</span>
         <span class="nav-menu-icon">▼</span>
       </div>
       <div class="nav-menu-items" id="navMenuItems">
         <div class="nav-menu-item active" onclick="showSection('stats')">📊 Estadísticas</div>
-        <div class="nav-menu-item" onclick="showSection('admins')">👑 Administradores</div>
         <div class="nav-menu-item" onclick="showSection('users')">👥 Usuarios Conectados</div>
-        <div class="nav-menu-item" onclick="showSection('chat')">💬 Estado del Chat</div>
-        <div class="nav-menu-item" onclick="showSection('history')">📜 Historial</div>
-        <div class="nav-menu-item" onclick="showSection('announce')">📣 Anuncios</div>
-        <div class="nav-menu-item" onclick="showSection('reports')">🚨 Reportes</div>
-        <div class="nav-menu-item" onclick="showSection('mute')">🔇 Silenciar</div>
-        <div class="nav-menu-item" onclick="showSection('filter')">🚫 Filtro de Palabras</div>
+        <div class="nav-menu-item" onclick="showSection('admins')">👑 Administradores</div>
+        <div class="nav-menu-item" onclick="showSection('chat')">💬 Control del Chat</div>
         <div class="nav-menu-item" onclick="showSection('live')">🔴 Monitoreo en Vivo</div>
+        <div class="nav-menu-item" onclick="showSection('filter')">🚫 Filtro de Palabras</div>
         <div class="nav-menu-item" onclick="showSection('analytics')">📈 Análisis</div>
-        <div class="nav-menu-item" onclick="showSection('ban')">🚫 Ban / Kick</div>
-        <div class="nav-menu-item" onclick="showSection('password')">🔐 Contraseña Admin</div>
+        <div class="nav-menu-item" onclick="showSection('ban')">⛔ Ban / Kick</div>
+        <div class="nav-menu-item" onclick="showSection('mute')">🔇 Silenciar Usuarios</div>
+        <div class="nav-menu-item" onclick="showSection('announce')">📣 Anuncios</div>
+        <div class="nav-menu-item" onclick="showSection('history')">📜 Historial</div>
+        <div class="nav-menu-item" onclick="showSection('reports')">🚨 Reportes</div>
+        <div class="nav-menu-item" onclick="showSection('password')">🔐 Seguridad</div>
       </div>
     </div>
 

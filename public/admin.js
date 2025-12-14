@@ -576,7 +576,7 @@ function toggleNavMenu() {
   const navMenuItems = document.getElementById('navMenuItems');
   const icon = document.querySelector('.nav-menu-icon');
   navMenuItems.classList.toggle('active');
-  icon.textContent = navMenuItems.classList.contains('active') ? '▼' : '▶';
+  icon.classList.toggle('rotated');
 }
 
 // Abrir menú por defecto
