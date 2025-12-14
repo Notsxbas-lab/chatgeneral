@@ -19,21 +19,34 @@ window.addEventListener('load', () => {
 window.submitAdminLogin = function() {
   const username = adminLoginUsername.value.trim();
   const password = adminLoginPassword.value.trim();
+  
+  loginError.classList.remove('show');
+  
   if (!username || !password) {
+    loginError.textContent = 'Completa todos los campos';
     loginError.classList.add('show');
+    return;
+  }
+
+  // Verificar conexión del socket
+  if (!socket.connected) {
+    loginError.textContent = 'Conectando al servidor...';
+    loginError.classList.add('show');
+    setTimeout(() => submitAdminLogin(), 1000);
     return;
   }
 
   // Enviar usuario y contraseña al servidor para validar
   socket.emit('adminLogin', { username, password }, (response) => {
-    if (response.success) {
+    if (response && response.success) {
       isLoggedIn = true;
       sessionStorage.setItem('adminLoggedIn', 'true');
       sessionStorage.setItem('adminUsername', username);
-      sessionStorage.setItem('adminPassword', password); // Store password for reconnect
+      sessionStorage.setItem('adminPassword', password);
       adminLoginOverlay.classList.add('hidden');
       requestAdminData();
     } else {
+      loginError.textContent = 'Usuario o contraseña incorrectos';
       loginError.classList.add('show');
       adminLoginPassword.value = '';
       adminLoginUsername.focus();
