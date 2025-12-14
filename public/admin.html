@@ -137,9 +137,10 @@
     <div id="adminLoginOverlay">
       <div class="admin-login-box">
         <h1>🔐</h1>
-        <p>Ingresa la contraseña del administrador</p>
-        <div class="login-error" id="loginError">Contraseña incorrecta</div>
-        <input id="adminLoginPassword" type="password" placeholder="Contraseña" autofocus />
+        <p>Acceso al Panel de Administración</p>
+        <div class="login-error" id="loginError">Credenciales incorrectas</div>
+        <input id="adminLoginUsername" type="text" placeholder="Nombre de usuario admin" autofocus style="margin-bottom:12px" />
+        <input id="adminLoginPassword" type="password" placeholder="Contraseña" />
         <button onclick="submitAdminLogin()">Acceder</button>
       </div>
     </div>

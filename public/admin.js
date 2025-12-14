@@ -2,6 +2,7 @@ const socket = io();
 
 // Login
 const adminLoginOverlay = document.getElementById('adminLoginOverlay');
+const adminLoginUsername = document.getElementById('adminLoginUsername');
 const adminLoginPassword = document.getElementById('adminLoginPassword');
 const loginError = document.getElementById('loginError');
 let isLoggedIn = false;
@@ -16,29 +17,34 @@ window.addEventListener('load', () => {
 });
 
 window.submitAdminLogin = function() {
+  const username = adminLoginUsername.value.trim();
   const password = adminLoginPassword.value.trim();
-  if (!password) {
+  if (!username || !password) {
     loginError.classList.add('show');
     return;
   }
 
-  // Enviar contraseña al servidor para validar
-  socket.emit('adminLogin', { password }, (response) => {
+  // Enviar usuario y contraseña al servidor para validar
+  socket.emit('adminLogin', { username, password }, (response) => {
     if (response.success) {
       isLoggedIn = true;
       sessionStorage.setItem('adminLoggedIn', 'true');
+      sessionStorage.setItem('adminUsername', username);
       sessionStorage.setItem('adminPassword', password); // Store password for reconnect
       adminLoginOverlay.classList.add('hidden');
       requestAdminData();
     } else {
       loginError.classList.add('show');
       adminLoginPassword.value = '';
-      adminLoginPassword.focus();
+      adminLoginUsername.focus();
     }
   });
 };
 
 // Permitir login con Enter
+adminLoginUsername.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') adminLoginPassword.focus();
+});
 adminLoginPassword.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') submitAdminLogin();
 });
@@ -82,9 +88,10 @@ socket.on('connect', () => {
   console.log('Admin conectado');
   if (isLoggedIn) {
     // Auto-relogin on reconnect
+    const storedUsername = sessionStorage.getItem('adminUsername');
     const storedPassword = sessionStorage.getItem('adminPassword');
-    if (storedPassword) {
-      socket.emit('adminLogin', { password: storedPassword }, (response) => {
+    if (storedUsername && storedPassword) {
+      socket.emit('adminLogin', { username: storedUsername, password: storedPassword }, (response) => {
         if (response.success) {
           console.log('Auto-relogin successful');
           requestAdminData();
@@ -92,6 +99,7 @@ socket.on('connect', () => {
           console.log('Auto-relogin failed');
           // Clear stored credentials if password changed
           sessionStorage.removeItem('adminLoggedIn');
+          sessionStorage.removeItem('adminUsername');
           sessionStorage.removeItem('adminPassword');
           isLoggedIn = false;
           adminLoginOverlay.classList.remove('hidden');
@@ -404,15 +412,11 @@ function addAdminByName() {
   if (!username) {
     showToast('Ingresa un nombre de usuario', 'error');
     return;
-  }
-  
-  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-  if (!user) {
-    showToast(`Usuario "${username}" no encontrado o no conectado`, 'error');
-    return;
-  }
-  
-  socket.emit('promoteToAdmin', { userId: user.id, role });
+  // Registrar admin directamente sin necesidad de que esté conectado
+  socket.emit('registerAdmin', { username, role });
+  document.getElementById('addAdminUsername').value = '';
+  showToast(`${username} registrado como ${role}`, 'success');
+  setTimeout(() => loadAdminUsers(), 500});
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} promovido a ${role}`, 'success');
 }

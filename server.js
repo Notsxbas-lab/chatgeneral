@@ -34,6 +34,7 @@ const permissions = {
 };
 
 const adminUsers = new Map(); // socketId -> { username, role }
+const registeredAdmins = new Map(); // username -> { role } - Lista de admins registrados
 
 // Get client IP
 function getClientIp(socket) {
@@ -59,17 +60,28 @@ io.on('connection', (socket) => {
 
   // Admin login
   socket.on('adminLogin', (data, callback) => {
-    if (adminPassword && data.password === adminPassword) {
+    const { username, password } = data;
+    
+    // Validar que exista usuario y contraseña
+    if (!username || !password) {
+      console.log('Intento de login admin sin credenciales completas desde:', socket.id);
+      callback({ success: false });
+      return;
+    }
+    
+    // Verificar contraseña y usuario
+    if (password === adminPassword && registeredAdmins.has(username)) {
+      const adminData = registeredAdmins.get(username);
       socket.isAdmin = true;
-      socket.adminRole = roles.DUENO; // Rol por defecto: Dueño
+      socket.adminRole = adminData.role;
+      socket.adminUsername = username;
       socket.join('admin');
-      adminUsers.set(socket.id, { username: 'Admin', role: roles.DUENO });
-      console.log('Admin autenticado:', socket.id, 'con rol:', socket.adminRole);
+      adminUsers.set(socket.id, { username, role: adminData.role });
+      console.log('Admin autenticado:', username, 'con rol:', socket.adminRole);
       callback({ success: true });
-      // Notificar a otros admins
-      io.to('admin').emit('adminJoined', { role: socket.adminRole });
+      io.to('admin').emit('adminJoined', { username, role: socket.adminRole });
     } else {
-      console.log('Intento de login admin fallido desde:', socket.id);
+      console.log('Intento de login admin fallido desde:', socket.id, 'usuario:', username);
       callback({ success: false });
     }
   });
@@ -309,16 +321,26 @@ io.on('connection', (socket) => {
   socket.on('getAdminUsers', () => {
     if (!socket.isAdmin) return;
     
-    const adminList = Array.from(adminUsers.values()).map((admin, idx) => ({
-      id: Array.from(adminUsers.keys())[idx],
-      username: admin.username,
-      role: admin.role
+    // Obtener admins registrados
+    const adminList = Array.from(registeredAdmins.entries()).map(([username, data]) => ({
+      id: username, // Usar username como ID
+      username: username,
+      role: data.role
     }));
     
     socket.emit('adminUsersList', {
       admins: adminList,
       roles: Object.values(roles)
     });
+  });
+
+  // Registrar nuevo admin por nombre
+  socket.on('registerAdmin', ({ username, role }) => {
+    if (!socket.isAdmin || !permissions[socket.adminRole]?.includes('manageRoles')) return;
+    
+    registeredAdmins.set(username, { role });
+    console.log(`Admin registrado: ${username} con rol ${role}`);
+    io.to('admin').emit('userPromoted', { userId: username, username, role });
   });
 
   // Promover/Degradar usuario a administrador
@@ -330,6 +352,7 @@ io.on('connection', (socket) => {
       targetSocket.isAdmin = true;
       targetSocket.adminRole = role || roles.MOD_JUNIOR;
       adminUsers.set(userId, { username: targetSocket.username, role: targetSocket.adminRole });
+      registeredAdmins.set(targetSocket.username, { role: targetSocket.adminRole });
       io.to('admin').emit('userPromoted', { userId, username: targetSocket.username, role: targetSocket.adminRole });
       console.log(`${targetSocket.username} promovido a ${targetSocket.adminRole}`);
     }
@@ -339,11 +362,20 @@ io.on('connection', (socket) => {
   socket.on('demoteAdmin', ({ userId }) => {
     if (!socket.isAdmin || !permissions[socket.adminRole].includes('manageRoles')) return;
     
+    // Si userId es un nombre de usuario (string sin guiones), buscar en registeredAdmins
+    if (typeof userId === 'string' && !userId.includes('-')) {
+      registeredAdmins.delete(userId);
+      io.to('admin').emit('userDemoted', { userId, username: userId });
+      console.log(`${userId} removido de administradores registrados`);
+      return;
+    }
+    
     const targetSocket = io.sockets.sockets.get(userId);
     if (targetSocket) {
       targetSocket.isAdmin = false;
       targetSocket.adminRole = null;
       adminUsers.delete(userId);
+      registeredAdmins.delete(targetSocket.username);
       io.to('admin').emit('userDemoted', { userId, username: targetSocket.username });
       console.log(`${targetSocket.username} removido de administradores`);
     }
