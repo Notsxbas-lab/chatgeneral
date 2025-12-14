@@ -274,10 +274,6 @@ function renderAdminUsers(availableRoles) {
             </div>
             <div class="admin-user-actions" style="display:flex;gap:8px">
               <button onclick="openAdminPasswordModal('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--accent);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">🔐 Contraseña</button>
-              <select class="role-select" onchange="changeUserRole('${admin.id}', this.value)" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-size:0.85rem">
-                <option value="">Cambiar rol</option>
-                ${availableRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
-              </select>
               <button class="demote-btn" onclick="demoteAdmin('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">⬇️ Quitar</button>
             </div>
           </div>
