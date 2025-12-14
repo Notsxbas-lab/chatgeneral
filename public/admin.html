@@ -100,7 +100,7 @@
       .nav-menu-toggle{background:var(--primary);color:white;padding:14px 20px;cursor:pointer;font-weight:600;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:1.05rem}
       .nav-menu-toggle:hover{background:var(--primary-dark)}
       .nav-menu-items{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
-      .nav-menu-items.active{max-height:600px}
+      .nav-menu-items.active{max-height:600px;overflow-y:auto}
       .nav-menu-item{padding:14px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s;font-weight:500;font-size:0.95rem}
       .nav-menu-item:last-child{border-bottom:none;border-radius:0 0 8px 8px}
       .nav-menu-item:hover{background:var(--bg-light);padding-left:25px}
@@ -323,6 +323,71 @@
           <input type="number" id="muteDuration" placeholder="Duración (minutos)" class="input-field" min="1" max="1440" value="10" style="width:100%;margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:6px">
           <input type="text" id="muteReason" placeholder="Razón del silencio" class="input-field" style="width:100%;margin-bottom:16px;padding:10px;border:1px solid var(--border);border-radius:6px">
           <button class="btn btn-primary" onclick="muteUser()">🔇 Silenciar Usuario</button>
+        </div>
+      </div>
+
+      <!-- Sección Filtro de Palabras -->
+      <div class="admin-section" id="section-filter">
+        <h2>🚫 Filtro de Palabras</h2>
+        <div style="background:white;padding:20px;border-radius:8px">
+          <p style="margin-bottom:12px;color:var(--text-secondary)">Administra las palabras prohibidas en el chat:</p>
+          <div style="display:flex;gap:12px;margin-bottom:16px">
+            <input type="text" id="newBadWord" placeholder="Agregar palabra prohibida" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+            <button onclick="addBadWord()" style="padding:10px 20px;background:var(--danger);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">➕ Agregar</button>
+            <button onclick="loadBadWords()" style="padding:10px 20px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">🔄 Actualizar</button>
+          </div>
+          <div id="badWordsList" class="word-list"></div>
+        </div>
+      </div>
+
+      <!-- Sección Monitoreo en Vivo -->
+      <div class="admin-section" id="section-live">
+        <h2>🔴 Monitoreo en Vivo</h2>
+        <div style="background:white;padding:20px;border-radius:8px">
+          <div style="display:flex;gap:12px;margin-bottom:16px">
+            <button id="startMonitorBtn" onclick="startLiveMonitor()" style="flex:1;padding:12px;background:var(--success);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">▶️ Iniciar Monitoreo</button>
+            <button id="stopMonitorBtn" onclick="stopLiveMonitor()" style="flex:1;padding:12px;background:var(--danger);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;display:none">⏹️ Detener</button>
+          </div>
+          <div id="liveMessageFeed" class="live-feed" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Sección Análisis -->
+      <div class="admin-section" id="section-analytics">
+        <h2>📈 Análisis y Gráficos</h2>
+        <button onclick="loadAnalytics()" style="padding:12px 24px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;margin-bottom:20px">🔄 Actualizar Gráficos</button>
+        
+        <div class="chart-container">
+          <h3 style="margin:0 0 16px;color:var(--text-primary)">Usuarios por Sala</h3>
+          <div class="chart">
+            <div class="bar-chart" id="roomChart"></div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <h3 style="margin:0 0 16px;color:var(--text-primary)">Actividad Reciente</h3>
+          <div class="chart">
+            <div class="bar-chart" id="activityChart"></div>
+          </div>
+        </div>
+        
+        <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-top:20px">
+          <div class="stat-card">
+            <div class="value" id="totalMessagesCount">0</div>
+            <div class="label">Mensajes Totales</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="avgMessagesPerUser">0</div>
+            <div class="label">Promedio por Usuario</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="mostActiveRoom">-</div>
+            <div class="label">Sala Más Activa</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="totalReports">0</div>
+            <div class="label">Reportes Recibidos</div>
+          </div>
         </div>
       </div>
 
