@@ -178,6 +178,10 @@
         <div class="nav-menu-item" onclick="showSection('admins')">👑 Administradores</div>
         <div class="nav-menu-item" onclick="showSection('users')">👥 Usuarios Conectados</div>
         <div class="nav-menu-item" onclick="showSection('chat')">💬 Estado del Chat</div>
+        <div class="nav-menu-item" onclick="showSection('history')">📜 Historial</div>
+        <div class="nav-menu-item" onclick="showSection('announce')">📣 Anuncios</div>
+        <div class="nav-menu-item" onclick="showSection('reports')">🚨 Reportes</div>
+        <div class="nav-menu-item" onclick="showSection('mute')">🔇 Silenciar</div>
         <div class="nav-menu-item" onclick="showSection('ban')">🚫 Ban / Kick</div>
         <div class="nav-menu-item" onclick="showSection('password')">🔐 Contraseña Admin</div>
       </div>
@@ -262,6 +266,46 @@
           <button id="banIpBtn" class="danger">🚫 Banear IP</button>
         </div>
         <div id="bannedIpsList" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Sección Historial de Mensajes -->
+      <div class="admin-section" id="section-history">
+        <h2>📜 Historial de Mensajes</h2>
+        <div class="card">
+          <button class="btn btn-primary" onclick="loadMessageHistory()">🔄 Actualizar Historial</button>
+          <div id="messageHistoryList" style="max-height:500px;overflow-y:auto;margin-top:20px;border:1px solid var(--border);border-radius:8px;padding:10px"></div>
+        </div>
+      </div>
+
+      <!-- Sección Anuncios -->
+      <div class="admin-section" id="section-announce">
+        <h2>📣 Enviar Anuncio</h2>
+        <div class="card">
+          <p style="margin-bottom:12px;color:var(--text-secondary)">Envía un mensaje de anuncio a todos los usuarios conectados:</p>
+          <textarea id="announcementText" placeholder="Escribe el anuncio aquí..." style="width:100%;padding:12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;min-height:120px;margin-bottom:16px"></textarea>
+          <button class="btn btn-primary" onclick="sendAnnouncement()">📢 Enviar Anuncio</button>
+        </div>
+      </div>
+
+      <!-- Sección Reportes -->
+      <div class="admin-section" id="section-reports">
+        <h2>🚨 Mensajes Reportados</h2>
+        <div class="card">
+          <button class="btn btn-primary" onclick="loadReportedMessages()">🔄 Actualizar Reportes</button>
+          <div id="reportedMessagesList" style="max-height:500px;overflow-y:auto;margin-top:20px;border:1px solid var(--border);border-radius:8px;padding:10px"></div>
+        </div>
+      </div>
+
+      <!-- Sección Silenciar Usuario -->
+      <div class="admin-section" id="section-mute">
+        <h2>🔇 Silenciar Usuario</h2>
+        <div class="card">
+          <p style="margin-bottom:12px;color:var(--text-secondary)">Silencia temporalmente a un usuario para que no pueda enviar mensajes:</p>
+          <input type="text" id="muteUsername" placeholder="Nombre de usuario" class="input-field" style="width:100%;margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:6px">
+          <input type="number" id="muteDuration" placeholder="Duración (minutos)" class="input-field" min="1" max="1440" value="10" style="width:100%;margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:6px">
+          <input type="text" id="muteReason" placeholder="Razón del silencio" class="input-field" style="width:100%;margin-bottom:16px;padding:10px;border:1px solid var(--border);border-radius:6px">
+          <button class="btn btn-primary" onclick="muteUser()">🔇 Silenciar Usuario</button>
+        </div>
       </div>
 
       <!-- Sección Contraseña Admin -->

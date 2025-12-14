@@ -16,6 +16,31 @@ const roomsList = new Set(['global']);
 let chatRunning = true;
 let adminPassword = 'linda1102'; // Contraseña por defecto
 
+// Nuevas estructuras de datos
+const messageHistory = []; // Historial de mensajes (últimos 100)
+const MAX_HISTORY = 100;
+const reportedMessages = []; // Mensajes reportados
+const mutedUsers = new Map(); // userId -> { until: timestamp, reason }
+const badWords = new Set(['spam', 'tonto', 'idiota']); // Filtro de palabras (ejemplo)
+const pinnedMessages = new Map(); // room -> mensaje fijado
+const moderationLogs = []; // Logs de acciones de moderación
+const MAX_LOGS = 200;
+
+// Helper: Agregar log de moderación
+function addModerationLog(action, admin, details) {
+  moderationLogs.push({
+    id: Date.now(),
+    action,
+    admin,
+    details,
+    time: new Date().toLocaleString()
+  });
+  if (moderationLogs.length > MAX_LOGS) {
+    moderationLogs.shift();
+  }
+  io.to('admin').emit('newModerationLog', moderationLogs[moderationLogs.length - 1]);
+}
+
 // Roles y Permisos
 const roles = {
   DUENO: 'Dueño',
@@ -158,18 +183,30 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // moderation: simple banned words filter
-    const banned = ['spamword1', 'malapalabra'];
+    // Verificar si el usuario está muteado
+    const muteInfo = mutedUsers.get(socket.id);
+    if (muteInfo && Date.now() < muteInfo.until) {
+      const remainingMin = Math.ceil((muteInfo.until - Date.now()) / 60000);
+      socket.emit('system', `🔇 Estás silenciado. Tiempo restante: ${remainingMin} min`);
+      return;
+    } else if (muteInfo) {
+      mutedUsers.delete(socket.id); // Limpiar mute expirado
+    }
+
     const text = (typeof msg === 'string') ? msg : (msg.text || msg.message || '');
     const lower = String(text).toLowerCase();
-    const blocked = banned.some((w) => lower.includes(w));
+    
+    // Filtro de palabras prohibidas mejorado
+    const blocked = Array.from(badWords).some((w) => lower.includes(w.toLowerCase()));
     if (blocked) {
-      socket.emit('moderated', { reason: 'Contenido bloqueado por moderación' });
+      socket.emit('moderated', { reason: 'Contenido bloqueado: palabra prohibida detectada' });
+      addModerationLog('filter', socket.username, 'Mensaje bloqueado por filtro');
       return;
     }
 
     const payload = {
-      id: socket.id,
+      id: `msg_${Date.now()}_${socket.id}`,
+      socketId: socket.id,
       username: socket.username || 'Anon',
       message: text,
       time: Date.now(),
@@ -180,7 +217,15 @@ io.on('connection', (socket) => {
       avatarEmoji: socket.avatarEmoji || '',
       profileImage: socket.profileImage || '',
       bgColor: socket.bgColor || '#fafbff',
+      reactions: {}
     };
+    
+    // Guardar en historial
+    messageHistory.push(payload);
+    if (messageHistory.length > MAX_HISTORY) {
+      messageHistory.shift();
+    }
+    
     io.to(payload.room).emit('message', payload);
   });
 
@@ -343,6 +388,103 @@ socket.on('adminSetPassword', ({ password }) => {
       adminUsers.set(userId, { username: targetSocket.username || 'Unknown', role: newRole });
       io.to('admin').emit('userRoleChanged', { userId, username: targetSocket.username, newRole });
       console.log(`Rol de ${targetSocket.username} cambió a ${newRole}`);
+    }
+  });
+
+  // Obtener historial de mensajes
+  socket.on('getMessageHistory', () => {
+    if (!socket.isAdmin) return;
+    socket.emit('messageHistory', messageHistory.slice(-50)); // Últimos 50 mensajes
+  });
+
+  // Enviar anuncio
+  socket.on('sendAnnouncement', (announcement) => {
+    if (!socket.isAdmin) return;
+    const payload = {
+      id: `ann_${Date.now()}`,
+      type: 'announcement',
+      message: announcement.message,
+      username: 'Administración',
+      time: Date.now(),
+      room: 'global'
+    };
+    io.emit('announcement', payload);
+    addModerationLog('announcement', socket.username, announcement.message);
+  });
+
+  // Reportar mensaje
+  socket.on('reportMessage', (data) => {
+    reportedMessages.push({
+      id: Date.now(),
+      messageId: data.messageId,
+      messageText: data.messageText,
+      reportedBy: socket.username || 'Anon',
+      reporter: socket.id,
+      reason: data.reason || 'No especificado',
+      time: Date.now()
+    });
+    socket.emit('system', '✅ Mensaje reportado correctamente');
+    io.to('admin').emit('newReport', reportedMessages[reportedMessages.length - 1]);
+  });
+
+  // Obtener mensajes reportados
+  socket.on('getReportedMessages', () => {
+    if (!socket.isAdmin) return;
+    socket.emit('reportedMessages', reportedMessages);
+  });
+
+  // Silenciar usuario
+  socket.on('muteUser', (data) => {
+    if (!socket.isAdmin) return;
+    const targetSocket = Array.from(io.sockets.sockets.values())
+      .find(s => s.username === data.username);
+    
+    if (targetSocket) {
+      const until = Date.now() + (data.duration * 60000);
+      mutedUsers.set(targetSocket.id, {
+        until,
+        reason: data.reason || 'No especificado',
+        by: socket.username
+      });
+      targetSocket.emit('system', `🔇 Has sido silenciado por ${data.duration} minutos. Razón: ${data.reason || 'No especificado'}`);
+      addModerationLog('mute', socket.username, `${data.username} - ${data.duration}min`);
+      socket.emit('system', `✅ Usuario ${data.username} silenciado`);
+    } else {
+      socket.emit('system', '❌ Usuario no encontrado');
+    }
+  });
+
+  // Fijar mensaje
+  socket.on('pinMessage', (data) => {
+    if (!socket.isAdmin) return;
+    pinnedMessages.set(data.room || 'global', data.message);
+    io.to(data.room || 'global').emit('messagePinned', data.message);
+    addModerationLog('pin', socket.username, data.message.message);
+  });
+
+  // Indicador de escritura
+  socket.on('typing', () => {
+    socket.to(socket.room || 'global').emit('userTyping', {
+      username: socket.username,
+      room: socket.room
+    });
+  });
+
+  // Reaccionar a mensaje
+  socket.on('addReaction', (data) => {
+    const message = messageHistory.find(m => m.id === data.messageId);
+    if (message) {
+      if (!message.reactions) message.reactions = {};
+      if (!message.reactions[data.emoji]) message.reactions[data.emoji] = [];
+      if (!message.reactions[data.emoji].includes(socket.username)) {
+        message.reactions[data.emoji].push(socket.username);
+        io.to(message.room).emit('reactionAdded', {
+          messageId: data.messageId,
+          emoji: data.emoji,
+          username: socket.username,
+          reactions: message.reactions
+        });
+      }
     }
   });
 

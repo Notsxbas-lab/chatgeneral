@@ -137,7 +137,8 @@ function appendSystem(text) {
 function appendMessage(data) {
   const row = document.createElement('div');
   row.className = 'message-row';
-  if (data.id && data.id === socket.id) row.classList.add('me');
+  const isMe = data.id && data.id === socket.id;
+  if (isMe) row.classList.add('me');
 
   const avatar = document.createElement('div');
   avatar.className = 'avatar';
@@ -157,7 +158,7 @@ function appendMessage(data) {
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.classList.add((data.id && data.id === socket.id) ? 'me' : 'other');
+  bubble.classList.add(isMe ? 'me' : 'other');
 
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
@@ -176,11 +177,29 @@ function appendMessage(data) {
     bubble.appendChild(img);
   }
 
-  if (data.id && data.id === socket.id) {
+  // Agregar botón de reportar si no es mi mensaje
+  if (!isMe) {
+    const actions = document.createElement('div');
+    actions.className = 'bubble-actions';
+    const reportBtn = document.createElement('button');
+    reportBtn.className = 'bubble-action-btn';
+    reportBtn.textContent = '🚨';
+    reportBtn.title = 'Reportar';
+    reportBtn.onclick = () => reportMessage(data.id, data.message);
+    actions.appendChild(reportBtn);
+    bubble.appendChild(actions);
+  }
+
+  if (isMe) {
     row.appendChild(bubble);
   } else {
     row.appendChild(avatar);
     row.appendChild(bubble);
+    
+    // Reproducir sonido si no es mi mensaje
+    if (window.playNotificationSound) {
+      playNotificationSound();
+    }
   }
 
   messages.appendChild(row);
@@ -393,10 +412,120 @@ form.addEventListener('submit', (e) => {
   if (!msg) return;
   socket.emit('message', { type: 'text', text: msg, room: currentRoom, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
   input.value = '';
+  
+  // Detener indicador de escritura
+  clearTimeout(window.typingTimeout);
+});
+
+// Indicador de escritura
+input.addEventListener('input', () => {
+  clearTimeout(window.typingTimeout);
+  socket.emit('typing');
+  window.typingTimeout = setTimeout(() => {}, 1000);
 });
 
 renderRooms();
 initEmojiPicker();
+
+// ===== NUEVAS FUNCIONALIDADES =====
+
+// Modo oscuro
+const themeToggle = document.getElementById('themeToggle');
+const savedTheme = localStorage.getItem('chat_theme') || 'light';
+if (savedTheme === 'dark') {
+  document.body.classList.add('dark-mode');
+  if (themeToggle) themeToggle.textContent = '☀️';
+}
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('chat_theme', isDark ? 'dark' : 'light');
+  });
+}
+
+// Notificaciones de sonido
+let soundEnabled = localStorage.getItem('chat_sound') !== 'false';
+const soundToggle = document.getElementById('soundToggle');
+if (soundToggle) {
+  soundToggle.textContent = soundEnabled ? '🔔' : '🔕';
+  soundToggle.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    soundToggle.textContent = soundEnabled ? '🔔' : '🔕';
+    localStorage.setItem('chat_sound', soundEnabled);
+  });
+}
+
+// Audio de notificación
+const notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGmS96eeZTQ==');
+
+function playNotificationSound() {
+  if (soundEnabled && document.hidden) {
+    notificationSound.play().catch(() => {});
+  }
+}
+
+// Escuchar anuncios
+socket.on('announcement', (data) => {
+  const el = document.createElement('div');
+  el.className = 'message-row';
+  el.innerHTML = `
+    <div class="bubble announcement">
+      <div class="bubble-meta">📣 ${data.username || 'Administración'}</div>
+      ${data.message}
+    </div>
+  `;
+  messages.appendChild(el);
+  messages.scrollTop = messages.scrollHeight;
+  playNotificationSound();
+});
+
+// Indicador de escritura
+const typingIndicator = document.getElementById('typingIndicator');
+let typingUsers = new Set();
+
+socket.on('userTyping', (data) => {
+  if (data.username !== username && data.room === currentRoom) {
+    typingUsers.add(data.username);
+    updateTypingIndicator();
+    
+    setTimeout(() => {
+      typingUsers.delete(data.username);
+      updateTypingIndicator();
+    }, 2000);
+  }
+});
+
+function updateTypingIndicator() {
+  if (typingUsers.size > 0) {
+    const users = Array.from(typingUsers);
+    if (users.length === 1) {
+      typingIndicator.textContent = `${users[0]} está escribiendo...`;
+    } else if (users.length === 2) {
+      typingIndicator.textContent = `${users[0]} y ${users[1]} están escribiendo...`;
+    } else {
+      typingIndicator.textContent = `${users.length} personas están escribiendo...`;
+    }
+    typingIndicator.style.display = 'block';
+  } else {
+    typingIndicator.style.display = 'none';
+  }
+}
+
+// Reportar mensaje
+function reportMessage(messageId, messageText) {
+  const reason = prompt('¿Por qué deseas reportar este mensaje?');
+  if (reason) {
+    socket.emit('reportMessage', {
+      messageId,
+      messageText,
+      reason
+    });
+  }
+}
+window.reportMessage = reportMessage;
 
 // If a name is stored, auto-join; otherwise show modal and focus input so user types their name
 (function ensureNameOrPrompt() {

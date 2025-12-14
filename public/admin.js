@@ -614,21 +614,121 @@ function showSection(sectionName) {
     refreshUsers();
   } else if (sectionName === 'ban') {
     socket.emit('getAdminData');
+  } else if (sectionName === 'history') {
+    loadMessageHistory();
+  } else if (sectionName === 'reports') {
+    loadReportedMessages();
   }
 }
 
-// Initial load
-if (isLoggedIn) {
-  requestAdminData();
-  loadAdminUsers();
+// ===== NUEVAS FUNCIONES PARA HISTORIAL, ANUNCIOS Y REPORTES =====
+
+// Cargar historial de mensajes
+function loadMessageHistory() {
+  socket.emit('getMessageHistory');
 }
 
-// Cargar admins cuando el usuario haga login exitoso
-socket.on('connect', () => {
-  if (isLoggedIn) {
-    setTimeout(() => {
-      requestAdminData();
-      loadAdminUsers();
-    }, 1000);
+socket.on('messageHistory', (messages) => {
+  const historyList = document.getElementById('messageHistoryList');
+  if (!historyList) return;
+  
+  if (messages.length === 0) {
+    historyList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No hay mensajes en el historial</div>';
+    return;
   }
+  
+  historyList.innerHTML = messages.map(msg => {
+    const date = new Date(msg.time);
+    const timeStr = date.toLocaleTimeString('es-ES');
+    return `
+      <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:start">
+        <div style="flex:1">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+            <strong style="color:var(--text-primary)">${msg.username || 'Anon'}</strong>
+            <span style="font-size:0.75rem;color:var(--text-secondary)">${timeStr}</span>
+            <span style="font-size:0.7rem;padding:2px 6px;background:var(--bg-light);border-radius:4px">${msg.room || 'global'}</span>
+          </div>
+          <div style="color:var(--text-primary);word-break:break-word">${msg.message || ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+});
+
+// Enviar anuncio
+function sendAnnouncement() {
+  const text = document.getElementById('announcementText');
+  if (!text || !text.value.trim()) {
+    showToast('Escribe un mensaje de anuncio', 'warning');
+    return;
+  }
+  
+  socket.emit('sendAnnouncement', { message: text.value.trim() });
+  text.value = '';
+  showToast('Anuncio enviado correctamente', 'success');
+}
+
+// Cargar mensajes reportados
+function loadReportedMessages() {
+  socket.emit('getReportedMessages');
+}
+
+socket.on('reportedMessages', (reports) => {
+  const reportsList = document.getElementById('reportedMessagesList');
+  if (!reportsList) return;
+  
+  if (reports.length === 0) {
+    reportsList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">No hay mensajes reportados</div>';
+    return;
+  }
+  
+  reportsList.innerHTML = reports.map(report => {
+    const date = new Date(report.time);
+    const timeStr = date.toLocaleTimeString('es-ES');
+    return `
+      <div style="padding:12px;border-bottom:1px solid var(--border);background:rgba(211,47,47,0.05)">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+          <div>
+            <strong style="color:var(--danger)">Reportado por: ${report.reportedBy}</strong>
+            <span style="font-size:0.75rem;color:var(--text-secondary);margin-left:8px">${timeStr}</span>
+          </div>
+        </div>
+        <div style="padding:8px;background:white;border-radius:4px;margin-bottom:8px">
+          <strong>Mensaje:</strong> ${report.messageText || 'N/A'}
+        </div>
+        <div style="font-size:0.85rem;color:var(--text-secondary)">
+          <strong>Razón:</strong> ${report.reason}
+        </div>
+      </div>
+    `;
+  }).join('');
+});
+
+// Silenciar usuario
+function muteUser() {
+  const username = document.getElementById('muteUsername')?.value.trim();
+  const duration = parseInt(document.getElementById('muteDuration')?.value || 10);
+  const reason = document.getElementById('muteReason')?.value.trim() || 'No especificado';
+  
+  if (!username) {
+    showToast('Ingresa un nombre de usuario', 'warning');
+    return;
+  }
+  
+  if (duration < 1 || duration > 1440) {
+    showToast('La duración debe estar entre 1 y 1440 minutos', 'warning');
+    return;
+  }
+  
+  socket.emit('muteUser', { username, duration, reason });
+  
+  // Limpiar formulario
+  document.getElementById('muteUsername').value = '';
+  document.getElementById('muteDuration').value = '10';
+  document.getElementById('muteReason').value = '';
+}
+
+// Escuchar mensajes del sistema
+socket.on('system', (message) => {
+  showToast(message, 'success');
 });

@@ -19,6 +19,22 @@
         --me-bg:#e0f7ff;
         --other-bg:#ffffff;
       }
+      body.dark-mode{
+        --primary:#4cc9f0;
+        --primary-dark:#3a86ff;
+        --accent:#f72585;
+        --bg-light:#1a1a2e;
+        --bg-white:#16213e;
+        --text-primary:#eaeaea;
+        --text-secondary:#a0a0a0;
+        --border:#2d3748;
+        --success:#10b981;
+        --me-bg:#1e3a5f;
+        --other-bg:#1a2332;
+      }
+      body.dark-mode #messages{background:#0f1419}
+      body.dark-mode .msg.other{background:var(--other-bg)}
+      body.dark-mode .msg.me{background:var(--me-bg)}
       *{box-sizing:border-box}
       html,body{height:100%;margin:0;font-family:Poppins,system-ui,-apple-system,"Segoe UI",sans-serif;background:#f8fbff}
       body{display:flex;align-items:center;justify-content:center;padding:12px}
@@ -44,8 +60,11 @@
 
       header{padding:16px 20px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,var(--primary) 0%,var(--primary-dark) 100%);color:white;display:flex;justify-content:space-between;align-items:center}
       header h1{margin:0;font-size:1.2rem}
+      header .header-actions{display:flex;gap:12px;align-items:center}
       header .connection{font-size:0.85rem;padding:4px 12px;background:rgba(255,255,255,0.2);border-radius:12px}
       header .connection.online{background:rgba(0,208,132,0.3)}
+      .theme-toggle,.sound-toggle{background:rgba(255,255,255,0.2);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:1.2rem;transition:all 0.2s}
+      .theme-toggle:hover,.sound-toggle:hover{background:rgba(255,255,255,0.3);transform:scale(1.1)}
 
       #messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#fafbff;transition:all 0.2s}
       #messages.bg-custom{background-size:cover;background-position:center;background-attachment:fixed}
@@ -61,12 +80,20 @@
       @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       .message-row.me{justify-content:flex-end}
       .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0}
-      .bubble{max-width:60%;padding:10px 14px;border-radius:12px;word-wrap:break-word;box-shadow:0 2px 4px rgba(0,0,0,0.06)}
+      .bubble{max-width:60%;padding:10px 14px;border-radius:12px;word-wrap:break-word;box-shadow:0 2px 4px rgba(0,0,0,0.06);position:relative}
       .bubble.me{background:var(--me-bg);color:var(--text-primary);border-radius:12px 4px 12px 12px}
       .bubble.other{background:var(--other-bg);color:var(--text-primary);border:1px solid var(--border);border-radius:4px 12px 12px 12px}
+      .bubble.announcement{background:linear-gradient(135deg,#ff6b6b,#ee5a6f);color:white;max-width:80%;padding:16px;border-radius:12px;box-shadow:0 4px 12px rgba(255,107,107,0.3);font-weight:500;border:none}
       .bubble-meta{font-size:0.75rem;color:var(--text-secondary);margin-bottom:4px;font-weight:500}
       .bubble-img{max-width:100%;border-radius:8px;margin-top:8px}
+      .bubble-actions{position:absolute;top:4px;right:4px;display:none;gap:4px}
+      .bubble:hover .bubble-actions{display:flex}
+      .bubble-action-btn{background:rgba(255,255,255,0.9);border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;transition:all 0.2s}
+      .bubble-action-btn:hover{background:white;transform:scale(1.1)}
       .system{align-self:center;color:var(--text-secondary);font-size:0.85rem;padding:8px 12px;background:#f0f5ff;border-radius:8px;text-align:center}
+      
+      .typing-indicator{padding:8px 16px;font-size:0.8rem;color:var(--text-secondary);font-style:italic;animation:fadeIn 0.2s ease}
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
       #form{display:flex;gap:10px;padding:16px;background:white;border-top:1px solid var(--border)}
       #input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit}
@@ -160,7 +187,9 @@
       <div class="main">
         <header>
           <h1 id="currentRoom">#global</h1>
-          <div style="display:flex;gap:12px;align-items:center">
+          <div class="header-actions">
+            <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
+            <button class="sound-toggle" id="soundToggle" title="Sonido de notificaciones">🔔</button>
             <button class="profile-btn" id="profileBtn" style="display:none">👤 Perfil</button>
             <div class="connection" id="status">● Desconectado</div>
           </div>
@@ -170,6 +199,8 @@
           <button class="tool-btn" id="attachBtn" title="Adjuntar imagen">📎 Imagen</button>
           <button class="tool-btn" id="emojiBtn" title="Insertar emoji">😊 Emoji</button>
         </div>
+
+        <div id="typingIndicator" class="typing-indicator" style="display:none"></div>
 
         <div id="messages">
           <div class="drop-hint">📸</div>
