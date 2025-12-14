@@ -157,6 +157,7 @@ function restoreAdminStateFromCache() {
       saveRulesBtn.addEventListener('click', () => {
         const text = rulesTextInput?.value || '';
         socket.emit('setRulesText', { text });
+        autoLogDatabaseRecord('Reglas Actualizadas', text.substring(0, 100), 'config');
         showToast('Reglas guardadas', 'success');
       });
     }
@@ -485,12 +486,14 @@ function renderBannedIps() {
 function kickUser(userId, username) {
   if (confirm(`¿Expulsar a ${username}?`)) {
     socket.emit('adminKick', { userId });
+    autoLogDatabaseRecord(`Usuario Expulsado: ${username}`, `Acción realizada el ${new Date().toLocaleString('es-ES')}`, 'notas');
   }
 }
 
 function banUser(ip, username) {
   if (confirm(`¿Banear la IP ${ip} de ${username}?`)) {
     socket.emit('adminBan', { ip, username });
+    autoLogDatabaseRecord(`IP Baneada: ${ip}`, `Usuario: ${username}`, 'notas');
   }
 }
 
@@ -528,6 +531,7 @@ function confirmChangeName() {
     return;
   }
   socket.emit('adminChangeName', { userId: selectedUserId, newName });
+  autoLogDatabaseRecord(`Nombre de Usuario Cambiado`, `Nuevo nombre: ${newName}`, 'notas');
   closeModal();
 }
 
@@ -557,6 +561,7 @@ function addAdminByName() {
     if (res && res.success) {
       document.getElementById('addAdminUsername').value = '';
       document.getElementById('addAdminPassword').value = '';
+      autoLogDatabaseRecord(`Admin Registrado: ${username}`, `Rol: ${role}`, 'usuarios');
       showToast(`✓ ${username} registrado como ${role}`, 'success');
       // El servidor ya envió adminUsersList, pero recargamos por si acaso
       setTimeout(() => loadAdminUsers(), 300);
@@ -598,6 +603,7 @@ function confirmPromote() {
     return;
   }
   socket.emit('promoteToAdmin', { userId: selectedPromoteUserId, role });
+  autoLogDatabaseRecord(`Usuario Promovido a ${role}`, `ID: ${selectedPromoteUserId}`, 'usuarios');
   closePromoteModal();
 }
 
@@ -648,11 +654,13 @@ function showToast(message, type = 'info') {
 // Event listeners
 startChatBtn.addEventListener('click', () => {
   socket.emit('adminStartChat');
+  autoLogDatabaseRecord('Chat Iniciado', `Iniciado el ${new Date().toLocaleString('es-ES')}`, 'config');
 });
 
 stopChatBtn.addEventListener('click', () => {
   if (confirm('¿Parar el chat? Los usuarios podrán ver un mensaje.')) {
     socket.emit('adminStopChat');
+    autoLogDatabaseRecord('Chat Pausado', `Pausado el ${new Date().toLocaleString('es-ES')}`, 'config');
   }
 });
 
@@ -667,6 +675,7 @@ banIpBtn.addEventListener('click', () => {
     return;
   }
   socket.emit('adminBan', { ip, username: 'Manual' });
+  autoLogDatabaseRecord(`IP Baneada Manualmente: ${ip}`, `Baneo manual realizado`, 'notas');
   banIpInput.value = '';
 });
 
@@ -677,6 +686,7 @@ setPasswordBtn.addEventListener('click', () => {
     return;
   }
   socket.emit('adminSetPassword', { password });
+  autoLogDatabaseRecord('Contraseña Admin Actualizada', 'Nueva contraseña establecida el ' + new Date().toLocaleString('es-ES'), 'config');
 });
 
 searchUserInput.addEventListener('input', () => {
@@ -803,6 +813,7 @@ function sendAnnouncement() {
   }
   
   socket.emit('sendAnnouncement', { message: text.value.trim() });
+  autoLogDatabaseRecord(`Anuncio Enviado`, text.value.trim().substring(0, 100), 'notas');
   text.value = '';
   showToast('Anuncio enviado correctamente', 'success');
 }
@@ -921,6 +932,7 @@ function addBadWord() {
   }
   
   socket.emit('addFilteredWord', word);
+  autoLogDatabaseRecord(`Palabra Filtrada: ${word}`, 'Agregada al filtro de palabras prohibidas', 'config');
   input.value = '';
   showToast(`Palabra "${word}" agregada al filtro`, 'success');
 }
@@ -1069,6 +1081,16 @@ function renderAnalytics() {
 }
 
 window.loadAnalytics = loadAnalytics;
+
+// ===== AUTO-LOG PARA BASE DE DATOS =====
+function autoLogDatabaseRecord(key, value, category = 'general') {
+  socket.emit('addDatabaseRecord', { key, value, category }, (response) => {
+    if (response.success) {
+      console.log('Registro automático guardado:', key);
+    }
+  });
+}
+
 // ===== BASE DE DATOS PERSONAL =====
 let dbRecords = [];
 
