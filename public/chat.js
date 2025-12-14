@@ -137,7 +137,7 @@ function appendSystem(text) {
 function appendMessage(data) {
   const row = document.createElement('div');
   row.className = 'message-row';
-  const isMe = data.id && data.id === socket.id;
+  const isMe = data.socketId === socket.id;
   if (isMe) row.classList.add('me');
 
   const avatar = document.createElement('div');
