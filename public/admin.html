@@ -171,18 +171,6 @@
           </div>
         </div>
 
-        <h2 style="margin-top:24px">👥 Usuarios Conectados</h2>
-        <div class="admin-controls">
-          <input id="searchUser" type="text" placeholder="Buscar usuario...">
-          <button onclick="refreshUsers()">🔄 Actualizar</button>
-        </div>
-        
-        <div id="usersContainer" style="flex:1;overflow-y:auto">
-          <div class="empty-state">
-            <p>Cargando usuarios...</p>
-          </div>
-        </div>
-
         <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
           <h3 style="margin:0 0 12px;color:var(--text-primary)">👑 Administradores</h3>
           <div style="background:var(--bg-light);padding:16px;border-radius:8px;margin-bottom:16px">
@@ -204,7 +192,18 @@
           </div>
           <div id="adminUsersList" style="margin-top:16px"></div>
         </div>
-      </div>
+
+        <h2 style="margin-top:24px">👥 Usuarios Conectados</h2>
+        <div class="admin-controls">
+          <input id="searchUser" type="text" placeholder="Buscar usuario...">
+          <button onclick="refreshUsers()">🔄 Actualizar</button>
+        </div>
+        
+        <div id="usersContainer" style="flex:1;overflow-y:auto">
+          <div class="empty-state">
+            <p>Cargando usuarios...</p>
+          </div>
+        </div>
 
       <div class="admin-panel">
         <h2>⚙️ Controles Globales</h2>
