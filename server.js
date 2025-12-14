@@ -367,8 +367,6 @@ socket.on('adminSetPassword', ({ password }) => {
       roles: rolesArray
     });
   });
-    });
-  });
 
   // Registrar nuevo admin por nombre
   socket.on('registerAdmin', ({ username, role }) => {
