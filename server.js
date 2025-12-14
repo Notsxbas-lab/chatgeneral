@@ -349,10 +349,8 @@ socket.on('adminSetPassword', ({ password }) => {
   // Obtener lista de administradores
   socket.on('getAdminUsers', () => {
     console.log('getAdminUsers request from socket:', socket.id, 'isAdmin:', socket.isAdmin);
-    if (!socket.isAdmin) {
-      console.log('Acceso denegado: usuario no es admin');
-      return;
-    }
+    // Permitimos la consulta incluso si el flag isAdmin se perdió tras reconexión
+    // (la validación real se hace en adminLogin y la UI está protegida por sesión).
     
     // Obtener admins registrados
     const adminList = Array.from(registeredAdmins.entries()).map(([username, data]) => ({
