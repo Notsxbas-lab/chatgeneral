@@ -431,13 +431,14 @@ function addAdminByName() {
   if (!username) {
     showToast('Ingresa un nombre de usuario', 'error');
     return;
+  }
+  
   // Registrar admin directamente sin necesidad de que esté conectado
   socket.emit('registerAdmin', { username, role });
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
-  setTimeout(() => loadAdminUsers(), 500});
-  document.getElementById('addAdminUsername').value = '';
-  showToast(`${username} promovido a ${role}`, 'success');
+  setTimeout(() => loadAdminUsers(), 500);
+}
 }
 
 function showToast(message, type = 'info') {
