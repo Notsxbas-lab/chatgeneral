@@ -314,6 +314,15 @@
           <button id="startChatBtn" style="width:100%;padding:14px;font-size:1rem">▶ Iniciar Chat</button>
           <button id="stopChatBtn" style="width:100%;padding:14px;font-size:1rem" class="danger">⏹ Parar Chat</button>
         </div>
+        <div style="margin-top:20px;padding:16px;background:var(--bg-light);border-radius:8px">
+          <h3 style="margin:0 0 8px;color:var(--text-primary)">📜 Reglas del chat</h3>
+          <p style="margin:0 0 12px;color:var(--text-secondary);font-size:0.9rem">Edita el texto que verán todos en la sala #reglas.</p>
+          <textarea id="rulesTextInput" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;margin-bottom:10px"></textarea>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button id="refreshRulesBtn" style="padding:10px 14px;background:var(--border);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:var(--text-primary)">🔄 Actualizar</button>
+            <button id="saveRulesBtn" style="padding:10px 14px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">💾 Guardar Reglas</button>
+          </div>
+        </div>
       </div>
 
       <!-- Sección Ban / Kick -->

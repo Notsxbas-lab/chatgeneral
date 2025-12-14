@@ -12,9 +12,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 // State
 const connectedUsers = new Map(); // socketId -> { id, username, ip, room, socketId, ... }
 const bannedIps = new Set();
-const roomsList = new Set(['global']);
+const roomsList = new Set(['global', 'ayudas', 'reglas']);
 let chatRunning = true;
 let adminPassword = 'linda1102'; // Contraseña por defecto
+
+// Salas especiales
+const adminWriteRooms = new Set(['ayudas']);
+const rulesRoomName = 'reglas';
+const roomPasswords = new Map(); // room -> password
+let rulesText = 'Bienvenido. Agrega las reglas desde el panel admin para que todos las vean.';
 
 // Nuevas estructuras de datos
 const messageHistory = []; // Historial de mensajes (últimos 100)
@@ -51,6 +57,19 @@ function addModerationLog(action, admin, details) {
     moderationLogs.shift();
   }
   io.to('admin').emit('newModerationLog', moderationLogs[moderationLogs.length - 1]);
+}
+
+function getRoomsPayload() {
+  return Array.from(roomsList).map((name) => ({
+    name,
+    locked: roomPasswords.has(name),
+    adminOnly: adminWriteRooms.has(name),
+    isRules: name === rulesRoomName,
+  }));
+}
+
+function broadcastRooms() {
+  io.emit('roomsUpdated', getRoomsPayload());
 }
 
 // Roles y Permisos
@@ -98,6 +117,9 @@ io.on('connection', (socket) => {
     socket.emit('chatDisabled', { message: 'El chat está pausado por el administrador' });
   }
 
+  socket.emit('roomsUpdated', getRoomsPayload());
+  socket.emit('rulesText', rulesText);
+
   // Admin login
   socket.on('adminLogin', (data, callback) => {
     const { username, password } = data;
@@ -138,10 +160,45 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Crear sala (opcional con contraseña)
+  socket.on('createRoom', ({ room, password } = {}, cb) => {
+    const cleanRoom = String(room || '').trim();
+    if (!cleanRoom) {
+      cb && cb({ success: false, message: 'Nombre requerido' });
+      return;
+    }
+
+    if (cleanRoom.length > 30) {
+      cb && cb({ success: false, message: 'Nombre muy largo' });
+      return;
+    }
+
+    if (roomsList.has(cleanRoom)) {
+      cb && cb({ success: false, message: 'La sala ya existe' });
+      return;
+    }
+
+    roomsList.add(cleanRoom);
+    if (password && String(password).trim().length > 0) {
+      roomPasswords.set(cleanRoom, String(password));
+    }
+
+    broadcastRooms();
+    cb && cb({ success: true, room: cleanRoom, locked: roomPasswords.has(cleanRoom) });
+  });
+
   // join: { username, room, avatarColor, avatarEmoji, profileImage, bgColor }
-  socket.on('join', ({ username, room, avatarColor, avatarEmoji, profileImage, bgColor } = {}) => {
+  socket.on('join', ({ username, room, avatarColor, avatarEmoji, profileImage, bgColor, password } = {}) => {
     socket.username = username || 'Anon';
-    socket.room = room || 'global';
+    const targetRoom = room || 'global';
+
+    const requiredPassword = roomPasswords.get(targetRoom);
+    if (requiredPassword && requiredPassword !== password) {
+      socket.emit('joinDenied', { room: targetRoom, reason: 'Contraseña incorrecta' });
+      return;
+    }
+
+    socket.room = targetRoom;
     socket.avatarColor = avatarColor || '#00b4d8';
     socket.avatarEmoji = avatarEmoji || '';
     socket.profileImage = profileImage || '';
@@ -158,11 +215,18 @@ io.on('connection', (socket) => {
       socketId: socket.id
     });
 
-    // Add room to list
+    // Add room to list (if not present)
+    const beforeSize = roomsList.size;
     roomsList.add(socket.room);
+    if (roomsList.size !== beforeSize) {
+      broadcastRooms();
+    }
 
     socket.to(socket.room).emit('system', `${socket.username} se ha unido a ${socket.room}.`);
     socket.emit('roomJoined', { room: socket.room });
+    if (socket.room === rulesRoomName) {
+      socket.emit('rulesText', rulesText);
+    }
 
     // Notify admin
     io.to('admin').emit('userConnected', {
@@ -192,6 +256,16 @@ io.on('connection', (socket) => {
   socket.on('message', (msg) => {
     if (!chatRunning) {
       socket.emit('system', '⚠️ El chat está pausado por el administrador');
+      return;
+    }
+
+    if (adminWriteRooms.has(socket.room) && !socket.isAdmin) {
+      socket.emit('system', 'Solo administradores pueden escribir en esta sala.');
+      return;
+    }
+
+    if (socket.room === rulesRoomName && !socket.isAdmin) {
+      socket.emit('system', 'Solo administradores pueden actualizar las reglas.');
       return;
     }
 
@@ -430,6 +504,17 @@ socket.on('adminSetPassword', ({ password }) => {
   socket.on('getMessageHistory', () => {
     if (!socket.isAdmin) return;
     socket.emit('messageHistory', messageHistory.slice(-50)); // Últimos 50 mensajes
+  });
+
+  socket.on('getRulesText', () => {
+    socket.emit('rulesText', rulesText);
+  });
+
+  socket.on('setRulesText', ({ text }) => {
+    if (!socket.isAdmin) return;
+    const cleanText = String(text || '').trim().slice(0, 2000);
+    rulesText = cleanText || 'Reglas pendientes de publicar.';
+    io.emit('rulesText', rulesText);
   });
 
   // Enviar anuncio

@@ -17,6 +17,7 @@ const currentRoomEl = document.getElementById('currentRoom');
 const userDisplay = document.getElementById('userDisplay');
 const emojiPicker = document.getElementById('emojiPicker');
 const emojiGrid = document.getElementById('emojiGrid');
+const newRoomPasswordInput = document.getElementById('newRoomPassword');
 
 // Profile
 const profileBtn = document.getElementById('profileBtn');
@@ -40,7 +41,13 @@ let profileColor = '#00b4d8';
 let profileImage = '';
 let bgColor = '#fafbff';
 let currentRoom = 'global';
-const rooms = new Set(['global']);
+const rooms = new Map([
+  ['global', { locked: false, adminOnly: false, isRules: false }],
+  ['ayudas', { locked: false, adminOnly: true, isRules: false }],
+  ['reglas', { locked: false, adminOnly: false, isRules: true }]
+]);
+const storedRoomPasswords = new Map();
+let pendingRoom = null;
 
 const avatarColors = ['#00b4d8', '#ff006e', '#00d084', '#ffd60a', '#fd7792', '#a100f2', '#ff4757', '#26de81'];
 const bgColors = ['#fafbff', '#f0f9ff', '#fff8f0', '#f8fff0', '#f0ffff', '#fef0ff', '#fffaf0', '#f5f5f5'];
@@ -268,22 +275,28 @@ function escapeHtml(s) {
 
 function renderRooms() {
   roomsContainer.innerHTML = '<div class="room-label">Salas</div>';
-  rooms.forEach(room => {
+  rooms.forEach((meta, room) => {
     const el = document.createElement('div');
     el.className = `room-item ${room === currentRoom ? 'active' : ''}`;
-    el.textContent = `# ${room}`;
-    el.onclick = () => selectRoom(room);
+    const icon = meta.locked ? '🔒 ' : meta.adminOnly ? '👑 ' : meta.isRules ? '📜 ' : '';
+    el.textContent = `${icon}# ${room}`;
+    el.onclick = () => selectRoom(room, meta);
     roomsContainer.appendChild(el);
   });
 }
 
-function selectRoom(room) {
-  currentRoom = room;
-  currentRoomEl.textContent = `#${room}`;
-  messages.innerHTML = '';
-  appendSystem(`Entraste a la sala ${room}`);
-  if (username) socket.emit('join', { username, room });
-  renderRooms();
+function selectRoom(room, meta = {}) {
+  const targetMeta = meta || rooms.get(room) || {};
+  let passwordToUse = storedRoomPasswords.get(room);
+
+  if (targetMeta.locked && !passwordToUse) {
+    passwordToUse = prompt(`La sala #${room} tiene contraseña. Ingrésala para entrar:`) || '';
+    if (!passwordToUse) return;
+    storedRoomPasswords.set(room, passwordToUse);
+  }
+
+  pendingRoom = room;
+  socket.emit('join', { username, room, password: passwordToUse, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
 }
 
 setNameBtn.addEventListener('click', () => {
@@ -296,7 +309,8 @@ setNameBtn.addEventListener('click', () => {
   initColorPicker();
   initBgColorPicker();
   updateProfilePreview();
-  socket.emit('join', { username, room: currentRoom, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
+  const pwd = storedRoomPasswords.get(currentRoom);
+  socket.emit('join', { username, room: currentRoom, password: pwd, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
   overlay.style.display = 'none';
 });
 
@@ -344,10 +358,20 @@ closeProfileBtn.addEventListener('click', () => {
 
 createRoomBtn.addEventListener('click', () => {
   const r = newRoomInput.value.trim();
+  const pwd = (newRoomPasswordInput?.value || '').trim();
   if (!r) return alert('Introduce el nombre de la sala');
-  rooms.add(r);
-  newRoomInput.value = '';
-  selectRoom(r);
+  socket.emit('createRoom', { room: r, password: pwd }, (res) => {
+    if (res?.success) {
+      newRoomInput.value = '';
+      if (newRoomPasswordInput) newRoomPasswordInput.value = '';
+      if (res.locked && pwd) {
+        storedRoomPasswords.set(r, pwd);
+      }
+      selectRoom(r, { locked: !!res.locked });
+    } else {
+      alert(res?.message || 'No se pudo crear la sala');
+    }
+  });
 });
 
 attachBtn.addEventListener('click', () => fileInput.click());
@@ -429,12 +453,49 @@ socket.on('disconnect', (reason) => {
   }
 });
 
-socket.on('roomJoined', ({ room }) => {
-  rooms.add(room);
+socket.on('roomsUpdated', (roomList = []) => {
+  rooms.clear();
+  roomList.forEach((r) => {
+    rooms.set(r.name, { locked: !!r.locked, adminOnly: !!r.adminOnly, isRules: !!r.isRules });
+  });
   renderRooms();
 });
 
+socket.on('roomJoined', ({ room }) => {
+  currentRoom = room;
+  pendingRoom = null;
+  currentRoomEl.textContent = `#${room}`;
+  messages.innerHTML = '';
+  appendSystem(`Entraste a la sala ${room}`);
+  if (!rooms.has(room)) {
+    rooms.set(room, { locked: false, adminOnly: false, isRules: room === 'reglas' });
+  }
+  if (room === 'reglas') {
+    socket.emit('getRulesText');
+  }
+  renderRooms();
+});
+
+socket.on('joinDenied', ({ room, reason }) => {
+  appendSystem(`No pudiste entrar a #${room}: ${reason || 'acceso denegado'}`);
+  pendingRoom = null;
+});
+
 socket.on('system', (text) => appendSystem(text));
+
+socket.on('rulesText', (text) => {
+  if (currentRoom !== 'reglas') return;
+  messages.innerHTML = '';
+  const rulesBox = document.createElement('div');
+  rulesBox.className = 'message-row';
+  rulesBox.innerHTML = `
+    <div class="bubble announcement" style="max-width:90%">
+      <div class="bubble-meta">📜 Reglas del chat</div>
+      <div style="white-space:pre-wrap;line-height:1.5">${escapeHtml(text || 'Sin reglas definidas')}</div>
+    </div>`;
+  messages.appendChild(rulesBox);
+  messages.scrollTop = messages.scrollHeight;
+});
 
 socket.on('message', (data) => {
   appendMessage(data);

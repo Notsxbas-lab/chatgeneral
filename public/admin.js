@@ -92,6 +92,9 @@ const promoteRoleSelect = document.getElementById('promoteRoleSelect');
 const changeAdminPasswordModal = document.getElementById('changeAdminPasswordModal');
 const adminPasswordModalUsername = document.getElementById('adminPasswordModalUsername');
 const adminNewPassword = document.getElementById('adminNewPassword');
+const rulesTextInput = document.getElementById('rulesTextInput');
+const saveRulesBtn = document.getElementById('saveRulesBtn');
+const refreshRulesBtn = document.getElementById('refreshRulesBtn');
 
 // State
 let users = [];
@@ -150,6 +153,20 @@ function restoreAdminStateFromCache() {
     renderBannedIps();
   }
 
+    if (saveRulesBtn) {
+      saveRulesBtn.addEventListener('click', () => {
+        const text = rulesTextInput?.value || '';
+        socket.emit('setRulesText', { text });
+        showToast('Reglas guardadas', 'success');
+      });
+    }
+
+    if (refreshRulesBtn) {
+      refreshRulesBtn.addEventListener('click', () => {
+        socket.emit('getRulesText');
+        showToast('Reglas actualizadas', 'success');
+      });
+    }
   const cachedRooms = loadState(STORAGE_KEYS.rooms);
   if (Array.isArray(cachedRooms)) {
     rooms = new Set(cachedRooms);
@@ -304,6 +321,12 @@ socket.on('adminUsersList', (data) => {
   saveState(STORAGE_KEYS.adminUsers, adminUsers);
   saveState(STORAGE_KEYS.adminRoles, roles);
   renderAdminUsers(roles);
+});
+
+socket.on('rulesText', (text) => {
+  if (rulesTextInput) {
+    rulesTextInput.value = text || '';
+  }
 });
 
 socket.on('userPromoted', (data) => {
@@ -720,6 +743,8 @@ function showSection(sectionName) {
     loadBadWords();
   } else if (sectionName === 'analytics') {
     loadAnalytics();
+  } else if (sectionName === 'chat') {
+    socket.emit('getRulesText');
   }
 }
 
