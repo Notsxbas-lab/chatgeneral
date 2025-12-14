@@ -182,6 +182,28 @@
             <p>Cargando usuarios...</p>
           </div>
         </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
+          <h3 style="margin:0 0 12px;color:var(--text-primary)">👑 Administradores</h3>
+          <div style="background:var(--bg-light);padding:16px;border-radius:8px;margin-bottom:16px">
+            <label style="display:block;margin-bottom:8px;font-weight:600;font-size:0.9rem">Añadir Admin por Nombre</label>
+            <div class="admin-controls" style="margin-bottom:0">
+              <input id="addAdminUsername" type="text" placeholder="Nombre de usuario" style="flex:2">
+              <select id="addAdminRole" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+                <option value="Mod Junior">Mod Junior</option>
+                <option value="Mod">Mod</option>
+                <option value="Admin">Admin</option>
+                <option value="Dueño">Dueño</option>
+              </select>
+              <button onclick="addAdminByName()" style="background:var(--success)">➕ Añadir</button>
+            </div>
+          </div>
+          <div class="admin-controls">
+            <button onclick="loadAdminUsers()" style="flex:1;padding:12px">📋 Ver Administradores</button>
+            <button onclick="loadAdminUsers()" style="flex:0;padding:12px">🔄</button>
+          </div>
+          <div id="adminUsersList" style="margin-top:16px"></div>
+        </div>
       </div>
 
       <div class="admin-panel">
@@ -214,27 +236,6 @@
             <button id="setPasswordBtn">🔐 Establecer</button>
           </div>
           <p id="passwordStatus" style="font-size:0.85rem;color:var(--text-secondary);margin:8px 0">Estado: Sin contraseña</p>
-        </div>
-
-        <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
-          <h3 style="margin:0 0 12px;color:var(--text-primary)">👑 Gestión de Roles</h3>
-          <div style="background:var(--bg-light);padding:16px;border-radius:8px;margin-bottom:16px">
-            <label style="display:block;margin-bottom:8px;font-weight:600;font-size:0.9rem">Añadir Admin por Nombre</label>
-            <div class="admin-controls" style="margin-bottom:0">
-              <input id="addAdminUsername" type="text" placeholder="Nombre de usuario" style="flex:2">
-              <select id="addAdminRole" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
-                <option value="Mod Junior">Mod Junior</option>
-                <option value="Mod">Mod</option>
-                <option value="Admin">Admin</option>
-                <option value="Dueño">Dueño</option>
-              </select>
-              <button onclick="addAdminByName()" style="background:var(--success)">➕ Añadir</button>
-            </div>
-          </div>
-          <div class="admin-controls">
-            <button onclick="loadAdminUsers()" style="width:100%;padding:12px">📋 Ver Administradores</button>
-          </div>
-          <div id="adminUsersList" style="margin-top:16px"></div>
         </div>
       </div>
     </div>
