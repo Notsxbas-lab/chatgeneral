@@ -47,6 +47,8 @@
       .users-table th{background:var(--bg-light);padding:12px;text-align:left;font-weight:600;color:var(--text-primary);border-bottom:2px solid var(--border)}
       .users-table td{padding:12px;border-bottom:1px solid var(--border)}
       .users-table tr:hover{background:var(--bg-light)}
+  .users-table tbody{overflow-y:auto;display:block;max-height:none}
+  #databaseTable tbody{overflow-y:auto;max-height:600px}
 
       .user-row{display:flex;align-items:center;gap:12px}
       .user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:0.9rem}
@@ -494,7 +496,7 @@
 
         <div style="background:white;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
           <table class="users-table" id="databaseTable">
-            <thead>
+            <thead style="position:sticky;top:0;background:white;z-index:10">
               <tr>
                 <th>Clave</th>
                 <th>Valor</th>
@@ -509,7 +511,7 @@
               </tr>
             </tbody>
           </table>
-        </div>
+        </div style="background:white;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-height:700px;display:flex;flex-direction:column">
       </div>
     </div>
 
