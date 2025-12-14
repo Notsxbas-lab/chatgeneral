@@ -439,7 +439,6 @@ function addAdminByName() {
   showToast(`${username} registrado como ${role}`, 'success');
   setTimeout(() => loadAdminUsers(), 500);
 }
-}
 
 function showToast(message, type = 'info') {
   toastMessage.textContent = message;
