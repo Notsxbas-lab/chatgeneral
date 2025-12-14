@@ -200,10 +200,6 @@ socket.on('adminUsersList', (data) => {
   console.log('Received admin users data:', data);
   adminUsers = data.admins || [];
   console.log('Updated adminUsers:', adminUsers);
-  console.log('Admin users length:', adminUsers.length);
-  if (adminUsers.length === 0) {
-    console.warn('No admin users received from server!');
-  }
   renderAdminUsers(data.roles || ['Mod Junior', 'Mod', 'Admin', 'Dueño']);
 });
 
@@ -309,11 +305,6 @@ function renderBannedIps() {
       `).join('')}
     </div>
   `;
-}
-
-function refreshUsers() {
-  socket.emit('getAdminData');
-  showToast('Datos actualizados', 'success');
 }
 
 function kickUser(userId, username) {
@@ -425,6 +416,16 @@ function closeAdminPasswordModal() {
   adminNewPassword.value = '';
 }
 
+function confirmPromote() {
+  const role = promoteRoleSelect.value;
+  if (!role) {
+    showToast('Selecciona un rol', 'error');
+    return;
+  }
+  socket.emit('promoteToAdmin', { userId: selectedPromoteUserId, role });
+  closePromoteModal();
+}
+
 function confirmChangeAdminPassword() {
   const newPassword = adminNewPassword.value.trim();
   if (!newPassword) {
@@ -438,16 +439,6 @@ function confirmChangeAdminPassword() {
   socket.emit('setAdminPassword', { adminId: selectedAdminForPassword, password: newPassword });
   closeAdminPasswordModal();
   showToast('Contraseña actualizada', 'success');
-}
-
-function confirmPromote() {
-  const role = promoteRoleSelect.value;
-  if (!role) {
-    showToast('Selecciona un rol', 'error');
-    return;
-  }
-  socket.emit('promoteToAdmin', { userId: selectedPromoteUserId, role });
-  closePromoteModal();
 }
 
 function changeUserRole(userId, newRole) {
@@ -477,12 +468,12 @@ function addAdminByName() {
     showToast('Ingresa un nombre de usuario', 'error');
     return;
   }
+  
   console.log('Registering admin:', username, role);
   socket.emit('registerAdmin', { username, role });
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
   setTimeout(() => loadAdminUsers(), 1000);
-}
 }
 
 function showToast(message, type = 'info') {
