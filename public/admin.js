@@ -246,13 +246,19 @@ function updateChatStatus() {
 }
 
 function loadAdminUsers() {
+  console.log('loadAdminUsers called');
   socket.emit('getAdminUsers');
+}
+
+function refreshUsers() {
   socket.emit('getAdminData');
+  showToast('Datos actualizados', 'success');
 }
 
 function renderAdminUsers(availableRoles) {
+  console.log('renderAdminUsers called with:', adminUsers);
   if (!adminUsers || adminUsers.length === 0) {
-    adminUsersList.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem;padding:12px">No hay administradores asignados</p>';
+    adminUsersList.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem;padding:12px">No hay administradores asignados. Haz clic en "Ver Administradores" para cargar.</p>';
     return;
   }
 
@@ -415,17 +421,19 @@ function addAdminByName() {
     return;
   }
   
-  console.log('Registering admin:', username, role);
+  console.log('Registrando admin:', username, role, password);
   socket.emit('registerAdmin', { username, role, password }, (res) => {
+    console.log('Respuesta registerAdmin:', res);
     if (res && res.success) {
-      showToast(`${username} registrado como ${role}`, 'success');
-      loadAdminUsers();
+      document.getElementById('addAdminUsername').value = '';
+      document.getElementById('addAdminPassword').value = '';
+      showToast(`✓ ${username} registrado como ${role}`, 'success');
+      // El servidor ya envió adminUsersList, pero recargamos por si acaso
+      setTimeout(() => loadAdminUsers(), 300);
     } else {
-      showToast(res?.message || 'No se pudo registrar', 'error');
+      showToast('Error: ' + (res?.message || 'No se pudo registrar'), 'error');
     }
   });
-  document.getElementById('addAdminUsername').value = '';
-  document.getElementById('addAdminPassword').value = '';
 }
 
 function openPromoteModal(userId, username) {
