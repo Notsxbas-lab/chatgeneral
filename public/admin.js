@@ -577,6 +577,14 @@ function toggleNavMenu() {
   icon.textContent = navMenuItems.classList.contains('active') ? '▼' : '▶';
 }
 
+// Abrir menú por defecto
+window.addEventListener('DOMContentLoaded', () => {
+  const navMenuItems = document.getElementById('navMenuItems');
+  if (navMenuItems) {
+    navMenuItems.classList.add('active');
+  }
+});
+
 function showSection(sectionName) {
   // Ocultar todas las secciones
   document.querySelectorAll('.admin-section').forEach(section => {
@@ -596,10 +604,29 @@ function showSection(sectionName) {
   
   // Activar el item del menú correspondiente
   event.target.classList.add('active');
+  
+  // Cargar datos específicos de la sección
+  if (sectionName === 'admins') {
+    loadAdminUsers();
+  } else if (sectionName === 'users') {
+    refreshUsers();
+  } else if (sectionName === 'ban') {
+    socket.emit('getAdminData');
+  }
 }
 
 // Initial load
 if (isLoggedIn) {
   requestAdminData();
-  setTimeout(() => loadAdminUsers(), 500);
+  loadAdminUsers();
 }
+
+// Cargar admins cuando el usuario haga login exitoso
+socket.on('connect', () => {
+  if (isLoggedIn) {
+    setTimeout(() => {
+      requestAdminData();
+      loadAdminUsers();
+    }, 1000);
+  }
+});
