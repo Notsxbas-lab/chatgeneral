@@ -397,6 +397,26 @@ function demoteAdmin(userId, username) {
   }
 }
 
+function addAdminByName() {
+  const username = document.getElementById('addAdminUsername').value.trim();
+  const role = document.getElementById('addAdminRole').value;
+  
+  if (!username) {
+    showToast('Ingresa un nombre de usuario', 'error');
+    return;
+  }
+  
+  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  if (!user) {
+    showToast(`Usuario "${username}" no encontrado o no conectado`, 'error');
+    return;
+  }
+  
+  socket.emit('promoteToAdmin', { userId: user.id, role });
+  document.getElementById('addAdminUsername').value = '';
+  showToast(`${username} promovido a ${role}`, 'success');
+}
+
 function showToast(message, type = 'info') {
   toastMessage.textContent = message;
   toast.className = `toast show ${type}`;
