@@ -246,6 +246,42 @@ function updateChatStatus() {
   }
 }
 
+function loadAdminUsers() {
+  socket.emit('getAdminUsers');
+  socket.emit('getAdminData');
+}
+
+function renderAdminUsers(availableRoles) {
+  if (!adminUsers || adminUsers.length === 0) {
+    adminUsersList.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem;padding:12px">No hay administradores asignados</p>';
+    return;
+  }
+
+  adminUsersList.innerHTML = `
+    <div class="admin-users-list">
+      ${adminUsers.map(admin => {
+        const roleClass = (admin.role || '').toLowerCase().replace(/\s+/g, '-');
+        return `
+          <div class="admin-user-item" style="padding:12px;background:var(--bg-light);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            <div class="admin-user-info">
+              <div class="name" style="font-weight:600">${admin.username}</div>
+              <span class="role-badge ${roleClass}" style="display:inline-block;padding:4px 8px;background:var(--primary);color:white;border-radius:4px;font-size:0.8rem">${admin.role}</span>
+            </div>
+            <div class="admin-user-actions" style="display:flex;gap:8px">
+              <button onclick="openAdminPasswordModal('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--accent);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">🔐 Contraseña</button>
+              <select class="role-select" onchange="changeUserRole('${admin.id}', this.value)" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-size:0.85rem">
+                <option value="">Cambiar rol</option>
+                ${availableRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
+              </select>
+              <button class="demote-btn" onclick="demoteAdmin('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">⬇️ Quitar</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderUsers() {
   const search = searchUserInput.value.toLowerCase();
   const filtered = users.filter(u => u.username.toLowerCase().includes(search));
@@ -391,21 +427,6 @@ function addAdminByName() {
   });
   document.getElementById('addAdminUsername').value = '';
   document.getElementById('addAdminPassword').value = '';
-              <span class="role-badge ${roleClass}" style="display:inline-block;padding:4px 8px;background:var(--primary);color:white;border-radius:4px;font-size:0.8rem">${admin.role}</span>
-            </div>
-            <div class="admin-user-actions" style="display:flex;gap:8px">
-              <button onclick="openAdminPasswordModal('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--accent);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">🔐 Contraseña</button>
-              <select class="role-select" onchange="changeUserRole('${admin.id}', this.value)" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-size:0.85rem">
-                <option value="">Cambiar rol</option>
-                ${availableRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
-              </select>
-              <button class="demote-btn" onclick="demoteAdmin('${admin.id}', '${admin.username}')" style="padding:6px 10px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">⬇️ Quitar</button>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
 }
 
 function openPromoteModal(userId, username) {
@@ -477,34 +498,7 @@ function demoteAdmin(userId, username) {
   }
 }
 
-function addAdminByName() {
-  const username = document.getElementById('addAdminUsername').value.trim();
-  const password = document.getElementById('addAdminPassword').value.trim();
-  const role = document.getElementById('addAdminRole').value;
-  
-  if (!username) {
-    showToast('Ingresa un nombre de usuario', 'error');
-    return;
-  }
-  
-  if (!password) {
-    showToast('Ingresa una contraseña', 'error');
-    return;
-  }
-  
-  if (password.length < 6) {
-    showToast('La contraseña debe tener mínimo 6 caracteres', 'error');
-    return;
-  }
-  
-  console.log('Registering admin:', username, role);
-  socket.emit('registerAdmin', { username, role, password });
-  document.getElementById('addAdminUsername').value = '';
-  document.getElementById('addAdminPassword').value = '';
-  showToast(`${username} registrado como ${role}`, 'success');
-  setTimeout(() => loadAdminUsers(), 500);
-  setTimeout(() => loadAdminUsers(), 1000);
-}
+// (segunda definición eliminada)
 
 function showToast(message, type = 'info') {
   toastMessage.textContent = message;
