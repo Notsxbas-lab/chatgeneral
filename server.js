@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -21,6 +22,56 @@ const adminWriteRooms = new Set(['ayudas']);
 const rulesRoomName = 'reglas';
 const roomPasswords = new Map(); // room -> password
 let rulesText = 'Bienvenido. Agrega las reglas desde el panel admin para que todos las vean.';
+
+// Persistencia de datos
+const DATA_FILE = path.join(__dirname, 'chat-data.json');
+
+function saveData() {
+  const data = {
+    rulesText,
+    rooms: Array.from(roomsList),
+    roomPasswords: Array.from(roomPasswords.entries()),
+    bannedIps: Array.from(bannedIps),
+    badWords: Array.from(badWords)
+  };
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+    console.log('Datos guardados correctamente');
+  } catch (err) {
+    console.error('Error al guardar datos:', err);
+  }
+}
+
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      if (data.rulesText) rulesText = data.rulesText;
+      if (data.rooms) {
+        roomsList.clear();
+        data.rooms.forEach(r => roomsList.add(r));
+      }
+      if (data.roomPasswords) {
+        roomPasswords.clear();
+        data.roomPasswords.forEach(([room, pass]) => roomPasswords.set(room, pass));
+      }
+      if (data.bannedIps) {
+        bannedIps.clear();
+        data.bannedIps.forEach(ip => bannedIps.add(ip));
+      }
+      if (data.badWords) {
+        badWords.clear();
+        data.badWords.forEach(word => badWords.add(word));
+      }
+      console.log('Datos cargados desde archivo:', data);
+    }
+  } catch (err) {
+    console.error('Error al cargar datos:', err);
+  }
+}
+
+// Cargar datos al iniciar
+loadData();
 
 // Nuevas estructuras de datos
 const messageHistory = []; // Historial de mensajes (últimos 100)
@@ -183,6 +234,7 @@ io.on('connection', (socket) => {
       roomPasswords.set(cleanRoom, String(password));
     }
 
+    saveData();
     broadcastRooms();
     cb && cb({ success: true, room: cleanRoom, locked: roomPasswords.has(cleanRoom) });
   });
@@ -411,6 +463,7 @@ io.on('connection', (socket) => {
     if (!socket.isAdmin) return;
     
     bannedIps.add(ip);
+    saveData();
     
     // Desconectar a todos los usuarios con esa IP
     Array.from(connectedUsers.values()).forEach(user => {
@@ -516,6 +569,7 @@ socket.on('adminSetPassword', ({ password }) => {
     const cleanText = String(text || '').trim().slice(0, 2000);
     rulesText = cleanText || 'Reglas pendientes de publicar.';
     console.log('Rules text updated to:', rulesText);
+    saveData();
     io.emit('rulesText', rulesText);
   });
 
@@ -741,6 +795,7 @@ socket.on('adminSetPassword', ({ password }) => {
     if (!socket.isAdmin) return;
     if (word && word.trim()) {
       badWords.add(word.trim().toLowerCase());
+      saveData();
       io.to('admin').emit('filteredWords', Array.from(badWords));
       addModerationLog('filter-add', socket.username, word);
     }

@@ -1,5 +1,39 @@
 const socket = io();
 
+// Persistencia de chat
+function saveChatState() {
+  const state = {
+    username,
+    currentRoom,
+    profileColor,
+    profileEmojis,
+    profileImage,
+    bgColor,
+    storedRoomPasswords: Array.from(storedRoomPasswords.entries())
+  };
+  localStorage.setItem('chatState', JSON.stringify(state));
+}
+
+function loadChatState() {
+  const saved = localStorage.getItem('chatState');
+  if (saved) {
+    const state = JSON.parse(saved);
+    username = state.username || '';
+    currentRoom = state.currentRoom || 'global';
+    profileColor = state.profileColor || '#00b4d8';
+    profileEmojis = state.profileEmojis || '😊';
+    profileImage = state.profileImage || '';
+    bgColor = state.bgColor || '#fafbff';
+    if (state.storedRoomPasswords) {
+      storedRoomPasswords.clear();
+      state.storedRoomPasswords.forEach(([room, pass]) => storedRoomPasswords.set(room, pass));
+    }
+  }
+}
+
+// Cargar estado al inicio
+loadChatState();
+
 const messages = document.getElementById('messages');
 const form = document.getElementById('form');
 const input = document.getElementById('input');
@@ -91,6 +125,7 @@ function initColorPicker() {
       document.querySelectorAll('#colorPicker .color-option').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       profileColor = color;
+      saveChatState();
       updateProfilePreview();
     };
     colorPicker.appendChild(btn);
@@ -108,6 +143,7 @@ function initBgColorPicker() {
       document.querySelectorAll('#bgColorPicker .color-option').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       bgColor = color;
+      saveChatState();
       messages.style.background = color;
     };
     bgColorPicker.appendChild(btn);
@@ -298,6 +334,7 @@ function selectRoom(room, meta = {}) {
     passwordToUse = prompt(`La sala #${room} tiene contraseña. Ingrésala para entrar:`) || '';
     if (!passwordToUse) return;
     storedRoomPasswords.set(room, passwordToUse);
+    saveChatState();
   }
 
   pendingRoom = room;
@@ -314,6 +351,7 @@ setNameBtn.addEventListener('click', () => {
   initColorPicker();
   initBgColorPicker();
   updateProfilePreview();
+  saveChatState();
   const pwd = storedRoomPasswords.get(currentRoom);
   socket.emit('join', { username, room: currentRoom, password: pwd, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
   overlay.style.display = 'none';
@@ -351,6 +389,7 @@ saveProfileBtn.addEventListener('click', () => {
   username = newName;
   profileEmojis = profileEmoji.value || '😊';
   userDisplay.textContent = username;
+  saveChatState();
   socket.emit('updateProfile', { username, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
   profileOverlay.style.display = 'none';
   messages.style.background = bgColor;
@@ -371,6 +410,7 @@ createRoomBtn.addEventListener('click', () => {
       if (newRoomPasswordInput) newRoomPasswordInput.value = '';
       if (res.locked && pwd) {
         storedRoomPasswords.set(r, pwd);
+        saveChatState();
       }
       selectRoom(r, { locked: !!res.locked });
     } else {
@@ -477,6 +517,7 @@ socket.on('roomJoined', ({ room }) => {
   pendingRoom = null;
   currentRoomEl.textContent = `#${room}`;
   messages.innerHTML = '';
+  saveChatState();
   appendSystem(`Entraste a la sala ${room}`);
   if (!rooms.has(room)) {
     rooms.set(room, { locked: false, adminOnly: false, isRules: room === 'reglas' });
