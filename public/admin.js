@@ -222,6 +222,7 @@ socket.on('connect', () => {
           console.log('Auto-relogin successful');
           requestAdminData();
           loadAdminUsers();
+          socket.emit('getRulesText');
         } else {
           console.log('Auto-relogin failed');
           sessionStorage.removeItem('adminLoggedIn');
@@ -234,6 +235,7 @@ socket.on('connect', () => {
     } else {
       requestAdminData();
       loadAdminUsers();
+      socket.emit('getRulesText');
     }
   }
 });
@@ -324,8 +326,12 @@ socket.on('adminUsersList', (data) => {
 });
 
 socket.on('rulesText', (text) => {
+  console.log('Rules text received:', text);
   if (rulesTextInput) {
     rulesTextInput.value = text || '';
+    console.log('Rules text set to input');
+  } else {
+    console.warn('rulesTextInput element not found');
   }
 });
 

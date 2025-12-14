@@ -507,6 +507,7 @@ socket.on('adminSetPassword', ({ password }) => {
   });
 
   socket.on('getRulesText', () => {
+    console.log('getRulesText requested, sending:', rulesText);
     socket.emit('rulesText', rulesText);
   });
 
@@ -514,6 +515,7 @@ socket.on('adminSetPassword', ({ password }) => {
     if (!socket.isAdmin) return;
     const cleanText = String(text || '').trim().slice(0, 2000);
     rulesText = cleanText || 'Reglas pendientes de publicar.';
+    console.log('Rules text updated to:', rulesText);
     io.emit('rulesText', rulesText);
   });
 
