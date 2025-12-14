@@ -313,8 +313,13 @@ setNameBtn.addEventListener('click', () => {
   const name = usernameInput.value.trim();
   if (!name) return alert('Introduce un nombre');
   username = name;
-  // store chosen name so next visits can auto-join
-  try { localStorage.setItem('chat_username', username); } catch (e) {}
+  // Guardar nombre y perfil en localStorage
+  try { 
+    localStorage.setItem('chat_username', username);
+    localStorage.setItem('chat_profileColor', profileColor);
+    localStorage.setItem('chat_profileEmoji', profileEmojis);
+    localStorage.setItem('chat_bgColor', bgColor);
+  } catch (e) {}
   profileName.value = name;
   userDisplay.textContent = username;
   profileBtn.style.display = 'block';
@@ -357,6 +362,13 @@ saveProfileBtn.addEventListener('click', () => {
   username = newName;
   profileEmojis = profileEmoji.value || '😊';
   userDisplay.textContent = username;
+  // Guardar cambios de perfil en localStorage
+  try {
+    localStorage.setItem('chat_username', username);
+    localStorage.setItem('chat_profileColor', profileColor);
+    localStorage.setItem('chat_profileEmoji', profileEmojis);
+    localStorage.setItem('chat_bgColor', bgColor);
+  } catch (e) {}
   socket.emit('updateProfile', { username, avatarColor: profileColor, avatarEmoji: profileEmojis, profileImage, bgColor });
   profileOverlay.style.display = 'none';
   messages.style.background = bgColor;
@@ -1086,10 +1098,17 @@ socket.on('commandResponse', (data) => {
     const stored = localStorage.getItem('chat_username');
     if (stored) {
       username = stored;
+      profileColor = localStorage.getItem('chat_profileColor') || profileColor;
+      profileEmojis = localStorage.getItem('chat_profileEmoji') || profileEmojis;
+      bgColor = localStorage.getItem('chat_bgColor') || bgColor;
+      
       usernameInput.value = username;
       profileName.value = username;
+      profileEmoji.value = profileEmojis;
       userDisplay.textContent = username;
       profileBtn.style.display = 'block';
+      messages.style.background = bgColor;
+      
       initColorPicker();
       initBgColorPicker();
       updateProfilePreview();
