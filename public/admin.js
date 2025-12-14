@@ -141,7 +141,6 @@ socket.on('adminData', (data) => {
   renderUsers();
   renderBannedIps();
   updateChatStatus();
-  loadAdminUsers();
 });
 
 socket.on('userConnected', (user) => {
