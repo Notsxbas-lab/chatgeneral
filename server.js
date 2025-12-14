@@ -907,8 +907,8 @@ socket.on('adminSetPassword', ({ password }) => {
   // Votar en encuesta
   socket.on('votePoll', (data) => {
     const poll = activePolls.get(data.pollId);
-    if (poll) {
-      // Remover voto anterior
+    if (poll && poll.options[data.optionIndex]) {
+      // Remover voto anterior si ya votó
       poll.options.forEach(opt => {
         const idx = opt.voters.indexOf(socket.id);
         if (idx > -1) {
@@ -918,7 +918,7 @@ socket.on('adminSetPassword', ({ password }) => {
       });
       
       // Agregar nuevo voto
-      const option = poll.options.find(opt => opt.id === data.optionId);
+      const option = poll.options[data.optionIndex];
       if (option && !option.voters.includes(socket.id)) {
         option.voters.push(socket.id);
         option.votes++;
@@ -943,7 +943,7 @@ socket.on('adminSetPassword', ({ password }) => {
       .sort((a, b) => b.xp - a.xp)
       .slice(0, 10);
     
-    socket.emit('rankingData', ranking);
+    socket.emit('ranking', ranking);
   });
   
   // Obtener estadísticas globales

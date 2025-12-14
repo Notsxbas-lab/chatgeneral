@@ -963,8 +963,9 @@ function displayPoll(poll) {
   
   poll.options.forEach((opt, idx) => {
     const percentage = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
-    const voted = poll.voters && poll.voters.includes(socket.id) ? 'voted' : '';
-    html += `<div class="poll-option ${voted}" onclick="votePoll('${poll.id}', ${idx})">
+    const userVoted = opt.voters && opt.voters.includes(socket.id);
+    const voted = userVoted ? 'voted' : '';
+    html += `<div class="poll-option ${voted}" onclick="votePoll('${poll.id}', ${idx})" style="cursor:pointer">
       <span>${escapeHtml(opt.text)}</span>
       <span class="poll-votes">${opt.votes} (${percentage}%)</span>
     </div>`;
