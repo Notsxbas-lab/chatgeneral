@@ -45,6 +45,7 @@ function submitAdminLogin() {
       sessionStorage.setItem('adminPassword', password);
       adminLoginOverlay.classList.add('hidden');
       requestAdminData();
+      loadAdminUsers();
     } else {
       console.error('Login fallido para:', username);
       loginError.textContent = 'Usuario o contraseña incorrectos';
@@ -109,6 +110,7 @@ socket.on('connect', () => {
         if (response.success) {
           console.log('Auto-relogin successful');
           requestAdminData();
+          loadAdminUsers();
         } else {
           console.log('Auto-relogin failed');
           sessionStorage.removeItem('adminLoggedIn');
@@ -120,6 +122,7 @@ socket.on('connect', () => {
       });
     } else {
       requestAdminData();
+      loadAdminUsers();
     }
   }
 });
@@ -134,6 +137,7 @@ socket.on('adminData', (data) => {
   renderUsers();
   renderBannedIps();
   updateChatStatus();
+  loadAdminUsers();
 });
 
 socket.on('userConnected', (user) => {
@@ -504,4 +508,5 @@ document.addEventListener('keydown', (e) => {
 // Initial load
 if (isLoggedIn) {
   requestAdminData();
+  setTimeout(() => loadAdminUsers(), 500);
 }
