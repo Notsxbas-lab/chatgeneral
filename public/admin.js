@@ -359,6 +359,11 @@ function loadAdminUsers() {
   socket.emit('getAdminUsers');
 }
 
+function refreshUsers() {
+  socket.emit('getAdminData');
+  showToast('Datos actualizados', 'success');
+}
+
 function renderAdminUsers(availableRoles) {
   console.log('Admin users to render:', adminUsers);
   if (!adminUsers || adminUsers.length === 0) {
