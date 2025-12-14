@@ -95,15 +95,18 @@
       .toast.warning{border-left:4px solid var(--warning)}
       @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
 
-      /* Secciones colapsables */
-      .collapsible-section{border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
-      .collapsible-header{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--bg-light);cursor:pointer;user-select:none;transition:background 0.2s}
-      .collapsible-header:hover{background:#e5f2f7}
-      .collapsible-header h3{margin:0;color:var(--text-primary);font-size:1rem;display:flex;align-items:center;gap:8px}
-      .collapsible-icon{transition:transform 0.3s;font-size:1.2rem}
-      .collapsible-content{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
-      .collapsible-content.active{max-height:2000px}
-      .collapsible-body{padding:16px}
+      /* Menú desplegable navegación */
+      .nav-menu{position:fixed;top:80px;left:20px;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:100;width:280px}
+      .nav-menu-toggle{background:var(--primary);color:white;padding:12px 20px;cursor:pointer;font-weight:600;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}
+      .nav-menu-toggle:hover{background:var(--primary-dark)}
+      .nav-menu-items{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
+      .nav-menu-items.active{max-height:500px}
+      .nav-menu-item{padding:12px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.2s}
+      .nav-menu-item:last-child{border-bottom:none}
+      .nav-menu-item:hover{background:var(--bg-light)}
+      .nav-menu-item.active{background:var(--primary);color:white;font-weight:600}
+      .admin-section{display:none}
+      .admin-section.active{display:block}
 
       @media (max-width:768px){
         .admin-container{grid-template-columns:1fr}
@@ -164,8 +167,25 @@
       <a href="/" class="admin-back-btn">← Volver al Chat</a>
     </div>
 
+    <!-- Menú de navegación desplegable -->
+    <div class="nav-menu">
+      <div class="nav-menu-toggle" onclick="toggleNavMenu()">
+        <span>📋 Menú</span>
+        <span class="nav-menu-icon">▼</span>
+      </div>
+      <div class="nav-menu-items" id="navMenuItems">
+        <div class="nav-menu-item active" onclick="showSection('stats')">📊 Estadísticas</div>
+        <div class="nav-menu-item" onclick="showSection('admins')">👑 Administradores</div>
+        <div class="nav-menu-item" onclick="showSection('users')">👥 Usuarios Conectados</div>
+        <div class="nav-menu-item" onclick="showSection('chat')">💬 Estado del Chat</div>
+        <div class="nav-menu-item" onclick="showSection('ban')">🚫 Ban / Kick</div>
+        <div class="nav-menu-item" onclick="showSection('password')">🔐 Contraseña Admin</div>
+      </div>
+    </div>
+
     <div class="admin-container">
-      <div class="admin-panel">
+      <!-- Sección Estadísticas -->
+      <div class="admin-section active" id="section-stats">
         <h2>📊 Estadísticas</h2>
         <div class="stats">
           <div class="stat-card">
@@ -181,106 +201,78 @@
             <div class="label">Salas Activas</div>
           </div>
         </div>
+      </div>
 
-        <div class="collapsible-section" style="margin-top:24px">
-          <div class="collapsible-header" onclick="toggleSection(this)">
-            <h3>👑 Administradores</h3>
-            <span class="collapsible-icon">▼</span>
-          </div>
-          <div class="collapsible-content active">
-            <div class="collapsible-body">
-              <div style="background:var(--bg-light);padding:16px;border-radius:8px;margin-bottom:16px">
-                <label style="display:block;margin-bottom:8px;font-weight:600;font-size:0.9rem">Añadir Admin por Nombre</label>
-                <div class="admin-controls" style="margin-bottom:0">
-                  <input id="addAdminUsername" type="text" placeholder="Nombre de usuario" style="flex:2">
-                  <select id="addAdminRole" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
-                    <option value="Mod Junior">Mod Junior</option>
-                    <option value="Mod">Mod</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Dueño">Dueño</option>
-                  </select>
-                  <button onclick="addAdminByName()" style="background:var(--success)">➕ Añadir</button>
-                </div>
-              </div>
-              <div class="admin-controls">
-                <button onclick="loadAdminUsers()" style="flex:1;padding:12px">📋 Ver Administradores</button>
-                <button onclick="loadAdminUsers()" style="flex:0;padding:12px">🔄</button>
-              </div>
-              <div id="adminUsersList" style="margin-top:16px"></div>
-            </div>
+      <!-- Sección Administradores -->
+      <div class="admin-section" id="section-admins">
+        <h2>👑 Administradores</h2>
+        <div style="background:var(--bg-light);padding:20px;border-radius:8px;margin-bottom:24px">
+          <h3 style="margin:0 0 16px;color:var(--text-primary)">Añadir Nuevo Administrador</h3>
+          <div style="display:grid;gap:12px">
+            <input id="addAdminUsername" type="text" placeholder="Nombre de usuario" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+            <input id="addAdminPassword" type="password" placeholder="Contraseña (mínimo 6 caracteres)" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+            <select id="addAdminRole" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+              <option value="Mod Junior">Mod Junior</option>
+              <option value="Mod">Mod</option>
+              <option value="Admin">Admin</option>
+              <option value="Dueño">Dueño</option>
+            </select>
+            <button onclick="addAdminByName()" style="width:100%;padding:14px;background:var(--success);color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-family:inherit">➕ Añadir Administrador</button>
           </div>
         </div>
+        <div class="admin-controls" style="margin-bottom:16px">
+          <button onclick="loadAdminUsers()" style="flex:1;padding:12px">📋 Ver Administradores</button>
+          <button onclick="loadAdminUsers()" style="flex:0;padding:12px">🔄</button>
+        </div>
+        <div id="adminUsersList"></div>
+      </div>
 
-        <div class="collapsible-section" style="margin-top:16px">
-          <div class="collapsible-header" onclick="toggleSection(this)">
-            <h3>👥 Usuarios Conectados</h3>
-            <span class="collapsible-icon">▼</span>
-          </div>
-          <div class="collapsible-content active">
-            <div class="collapsible-body">
-              <div class="admin-controls">
-                <input id="searchUser" type="text" placeholder="Buscar usuario...">
-                <button onclick="refreshUsers()">🔄 Actualizar</button>
-              </div>
-              <div id="usersContainer" style="max-height:400px;overflow-y:auto;margin-top:12px">
-                <div class="empty-state">
-                  <p>Cargando usuarios...</p>
-                </div>
-              </div>
-            </div>
+      <!-- Sección Usuarios Conectados -->
+      <div class="admin-section" id="section-users">
+        <h2>👥 Usuarios Conectados</h2>
+        <div class="admin-controls" style="margin-bottom:16px">
+          <input id="searchUser" type="text" placeholder="Buscar usuario...">
+          <button onclick="refreshUsers()">🔄 Actualizar</button>
+        </div>
+        <div id="usersContainer" style="max-height:600px;overflow-y:auto">
+          <div class="empty-state">
+            <p>Cargando usuarios...</p>
           </div>
         </div>
       </div>
-        <h2>⚙️ Controles Globales</h2>
-        
-        <div class="collapsible-section" style="margin-top:16px">
-          <div class="collapsible-header" onclick="toggleSection(this)">
-            <h3>💬 Estado del Chat</h3>
-            <span class="collapsible-icon">▼</span>
-          </div>
-          <div class="collapsible-content active">
-            <div class="collapsible-body">
-              <div id="chatStatusDisplay" style="padding:12px;background:var(--bg-light);border-radius:6px;font-weight:600;color:var(--text-primary);margin-bottom:12px">
-                Estado: Conectando...
-              </div>
-              <div class="admin-controls" style="flex-direction:column">
-                <button id="startChatBtn" style="width:100%;padding:12px">▶ Iniciar Chat</button>
-                <button id="stopChatBtn" style="width:100%;padding:12px" class="danger">⏹ Parar Chat</button>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div class="collapsible-section" style="margin-top:16px">
-          <div class="collapsible-header" onclick="toggleSection(this)">
-            <h3>🚫 Gestión de IPs Baneadas</h3>
-            <span class="collapsible-icon">▼</span>
-          </div>
-          <div class="collapsible-content active">
-            <div class="collapsible-body">
-              <div class="admin-controls">
-                <input id="banIpInput" type="text" placeholder="IP a banear..." style="flex:1">
-                <button id="banIpBtn" class="danger">🚫 Banear</button>
-              </div>
-              <div id="bannedIpsList" style="margin-top:12px;max-height:250px;overflow-y:auto"></div>
-            </div>
-          </div>
+      <!-- Sección Estado del Chat -->
+      <div class="admin-section" id="section-chat">
+        <h2>💬 Estado del Chat</h2>
+        <div id="chatStatusDisplay" style="padding:16px;background:var(--bg-light);border-radius:8px;font-weight:600;color:var(--text-primary);margin-bottom:16px;font-size:1.1rem">
+          Estado: Conectando...
         </div>
+        <div style="display:grid;gap:12px">
+          <button id="startChatBtn" style="width:100%;padding:14px;font-size:1rem">▶ Iniciar Chat</button>
+          <button id="stopChatBtn" style="width:100%;padding:14px;font-size:1rem" class="danger">⏹ Parar Chat</button>
+        </div>
+      </div>
 
-        <div class="collapsible-section" style="margin-top:16px">
-          <div class="collapsible-header" onclick="toggleSection(this)">
-            <h3>🔐 Contraseña Admin</h3>
-            <span class="collapsible-icon">▼</span>
+      <!-- Sección Ban / Kick -->
+      <div class="admin-section" id="section-ban">
+        <h2>🚫 Ban / Kick</h2>
+        <h3 style="margin:0 0 12px;color:var(--text-primary)">Gestión de IPs Baneadas</h3>
+        <div class="admin-controls" style="margin-bottom:16px">
+          <input id="banIpInput" type="text" placeholder="IP a banear..." style="flex:1">
+          <button id="banIpBtn" class="danger">🚫 Banear IP</button>
+        </div>
+        <div id="bannedIpsList" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Sección Contraseña Admin -->
+      <div class="admin-section" id="section-password">
+        <h2>🔐 Contraseña Admin</h2>
+        <div style="background:var(--bg-light);padding:20px;border-radius:8px">
+          <div class="admin-controls" style="margin-bottom:12px">
+            <input id="adminPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)" style="flex:1">
+            <button id="setPasswordBtn">🔐 Establecer</button>
           </div>
-          <div class="collapsible-content active">
-            <div class="collapsible-body">
-              <div class="admin-controls">
-                <input id="adminPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)">
-                <button id="setPasswordBtn">🔐 Establecer</button>
-              </div>
-              <p id="passwordStatus" style="font-size:0.85rem;color:var(--text-secondary);margin:8px 0">Estado: Sin contraseña</p>
-            </div>
-          </div>
+          <p id="passwordStatus" style="font-size:0.9rem;color:var(--text-secondary);margin:0">Estado: Sin contraseña</p>
         </div>
       </div>
     </div>

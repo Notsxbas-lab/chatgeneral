@@ -474,6 +474,7 @@ function demoteAdmin(userId, username) {
 
 function addAdminByName() {
   const username = document.getElementById('addAdminUsername').value.trim();
+  const password = document.getElementById('addAdminPassword').value.trim();
   const role = document.getElementById('addAdminRole').value;
   
   if (!username) {
@@ -481,9 +482,20 @@ function addAdminByName() {
     return;
   }
   
+  if (!password) {
+    showToast('Ingresa una contraseña', 'error');
+    return;
+  }
+  
+  if (password.length < 6) {
+    showToast('La contraseña debe tener mínimo 6 caracteres', 'error');
+    return;
+  }
+  
   console.log('Registering admin:', username, role);
-  socket.emit('registerAdmin', { username, role });
+  socket.emit('registerAdmin', { username, role, password });
   document.getElementById('addAdminUsername').value = '';
+  document.getElementById('addAdminPassword').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
   setTimeout(() => loadAdminUsers(), 500);
   setTimeout(() => loadAdminUsers(), 1000);
@@ -558,11 +570,32 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Toggle collapsible sections
-function toggleSection(header) {
-  const content = header.nextElementSibling;
-  const icon = header.querySelector('.collapsible-icon');
-  content.classList.toggle('active');
-  icon.textContent = content.classList.contains('active') ? '▼' : '▶';
+function toggleNavMenu() {
+  const navMenuItems = document.getElementById('navMenuItems');
+  const icon = document.querySelector('.nav-menu-icon');
+  navMenuItems.classList.toggle('active');
+  icon.textContent = navMenuItems.classList.contains('active') ? '▼' : '▶';
+}
+
+function showSection(sectionName) {
+  // Ocultar todas las secciones
+  document.querySelectorAll('.admin-section').forEach(section => {
+    section.classList.remove('active');
+  });
+  
+  // Remover active de todos los items del menú
+  document.querySelectorAll('.nav-menu-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Mostrar la sección seleccionada
+  const section = document.getElementById(`section-${sectionName}`);
+  if (section) {
+    section.classList.add('active');
+  }
+  
+  // Activar el item del menú correspondiente
+  event.target.classList.add('active');
 }
 
 // Initial load

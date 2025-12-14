@@ -83,8 +83,10 @@ io.on('connection', (socket) => {
       }
     }
     
-    // Verificar contraseña y usuario
-    if (password === adminPassword && adminData) {
+    // Verificar contraseña: comparar con la contraseña global O con la contraseña específica del admin
+    const passwordMatch = password === adminPassword || (adminData && adminData.password && password === adminData.password);
+    
+    if (passwordMatch && adminData) {
       socket.isAdmin = true;
       socket.adminRole = adminData.role;
       socket.adminUsername = foundUsername;
@@ -94,7 +96,7 @@ io.on('connection', (socket) => {
       callback({ success: true });
       io.to('admin').emit('adminJoined', { username: foundUsername, role: socket.adminRole });
     } else {
-      console.log('Intento de login admin fallido desde:', socket.id, 'usuario:', username, 'password match:', password === adminPassword, 'user exists:', !!adminData);
+      console.log('Intento de login admin fallido desde:', socket.id, 'usuario:', username, 'password match:', passwordMatch, 'user exists:', !!adminData);
       callback({ success: false });
     }
   });
@@ -369,10 +371,10 @@ socket.on('adminSetPassword', ({ password }) => {
   });
 
   // Registrar nuevo admin por nombre
-  socket.on('registerAdmin', ({ username, role }) => {
+  socket.on('registerAdmin', ({ username, role, password }) => {
     if (!socket.isAdmin || !permissions[socket.adminRole]?.includes('manageRoles')) return;
     
-    registeredAdmins.set(username, { role });
+    registeredAdmins.set(username, { role, password: password || null });
     console.log(`Admin registrado: ${username} con rol ${role}`);
     io.to('admin').emit('adminRegistered', { userId: username, username, role });
     io.to('admin').emit('userPromoted', { userId: username, username, role });
