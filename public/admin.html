@@ -29,9 +29,9 @@
       .admin-back-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.5);color:white;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:600;text-decoration:none;transition:all 0.2s}
       .admin-back-btn:hover{background:rgba(255,255,255,0.3)}
 
-      .admin-container{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+      .admin-container{flex:1;max-width:1400px;width:100%;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(400px, 1fr) minmax(400px, 1fr);gap:20px;align-items:start}
 
-      .admin-panel{background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:24px;display:flex;flex-direction:column}
+      .admin-panel{background:white;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:24px;display:flex;flex-direction:column;max-height:calc(100vh - 140px);overflow-y:auto}
       .admin-panel h2{margin:0 0 20px;color:var(--text-primary);font-size:1.3rem;border-bottom:2px solid var(--border);padding-bottom:12px}
 
       .admin-controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
