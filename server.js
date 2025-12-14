@@ -26,11 +26,11 @@ const roles = {
 };
 
 const permissions = {
-  DUENO: ['kick', 'ban', 'changeName', 'startChat', 'stopChat', 'setPassword', 'manageRoles', 'manageUsers'],
-  ADMIN: ['kick', 'ban', 'changeName', 'startChat', 'stopChat', 'setPassword', 'manageRoles', 'manageUsers'],
-  MOD: ['kick', 'ban', 'changeName'],
-  MOD_JUNIOR: ['kick'],
-  USER: []
+  'Dueño': ['kick', 'ban', 'changeName', 'startChat', 'stopChat', 'setPassword', 'manageRoles', 'manageUsers'],
+  'Admin': ['kick', 'ban', 'changeName', 'startChat', 'stopChat', 'setPassword', 'manageRoles', 'manageUsers'],
+  'Mod': ['kick', 'ban', 'changeName'],
+  'Mod Junior': ['kick'],
+  'Usuario': []
 };
 
 const adminUsers = new Map(); // socketId -> { username, role }
