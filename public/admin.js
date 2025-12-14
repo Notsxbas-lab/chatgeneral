@@ -38,6 +38,7 @@ window.submitAdminLogin = function() {
 
   // Enviar usuario y contraseña al servidor para validar
   socket.emit('adminLogin', { username, password }, (response) => {
+    console.log('Respuesta del servidor:', response);
     if (response && response.success) {
       isLoggedIn = true;
       sessionStorage.setItem('adminLoggedIn', 'true');
@@ -46,6 +47,7 @@ window.submitAdminLogin = function() {
       adminLoginOverlay.classList.add('hidden');
       requestAdminData();
     } else {
+      console.error('Login fallido para:', username);
       loginError.textContent = 'Usuario o contraseña incorrectos';
       loginError.classList.add('show');
       adminLoginPassword.value = '';

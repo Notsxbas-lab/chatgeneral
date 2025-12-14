@@ -396,5 +396,14 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Servidor escuchando en http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  console.log('=== CONFIGURACIÓN ADMIN ===');
+  console.log('Contraseña admin:', adminPassword);
+  console.log('Admins registrados:', Array.from(registeredAdmins.keys()));
+  registeredAdmins.forEach((data, username) => {
+    console.log(`  - ${username}: ${data.role}`);
+  });
+  console.log('=========================');
+});
 
