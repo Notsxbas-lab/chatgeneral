@@ -1,39 +1,5 @@
 const socket = io();
 
-// Persistencia de chat
-function saveChatState() {
-  const state = {
-    username,
-    currentRoom,
-    profileColor,
-    profileEmojis,
-    profileImage,
-    bgColor,
-    storedRoomPasswords: Array.from(storedRoomPasswords.entries())
-  };
-  localStorage.setItem('chatState', JSON.stringify(state));
-}
-
-function loadChatState() {
-  const saved = localStorage.getItem('chatState');
-  if (saved) {
-    const state = JSON.parse(saved);
-    username = state.username || '';
-    currentRoom = state.currentRoom || 'global';
-    profileColor = state.profileColor || '#00b4d8';
-    profileEmojis = state.profileEmojis || '😊';
-    profileImage = state.profileImage || '';
-    bgColor = state.bgColor || '#fafbff';
-    if (state.storedRoomPasswords) {
-      storedRoomPasswords.clear();
-      state.storedRoomPasswords.forEach(([room, pass]) => storedRoomPasswords.set(room, pass));
-    }
-  }
-}
-
-// Cargar estado al inicio
-loadChatState();
-
 const messages = document.getElementById('messages');
 const form = document.getElementById('form');
 const input = document.getElementById('input');
@@ -82,6 +48,44 @@ const rooms = new Map([
 ]);
 const storedRoomPasswords = new Map();
 let pendingRoom = null;
+
+// Persistencia de chat
+function saveChatState() {
+  const state = {
+    username,
+    currentRoom,
+    profileColor,
+    profileEmojis,
+    profileImage,
+    bgColor,
+    storedRoomPasswords: Array.from(storedRoomPasswords.entries())
+  };
+  localStorage.setItem('chatState', JSON.stringify(state));
+}
+
+function loadChatState() {
+  const saved = localStorage.getItem('chatState');
+  if (saved) {
+    try {
+      const state = JSON.parse(saved);
+      username = state.username || '';
+      currentRoom = state.currentRoom || 'global';
+      profileColor = state.profileColor || '#00b4d8';
+      profileEmojis = state.profileEmojis || '😊';
+      profileImage = state.profileImage || '';
+      bgColor = state.bgColor || '#fafbff';
+      if (state.storedRoomPasswords) {
+        storedRoomPasswords.clear();
+        state.storedRoomPasswords.forEach(([room, pass]) => storedRoomPasswords.set(room, pass));
+      }
+    } catch (err) {
+      console.error('Error al cargar estado:', err);
+    }
+  }
+}
+
+// Cargar estado al inicio
+loadChatState();
 
 const avatarColors = ['#00b4d8', '#ff006e', '#00d084', '#ffd60a', '#fd7792', '#a100f2', '#ff4757', '#26de81'];
 const bgColors = ['#fafbff', '#f0f9ff', '#fff8f0', '#f8fff0', '#f0ffff', '#fef0ff', '#fffaf0', '#f5f5f5'];
