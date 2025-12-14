@@ -214,6 +214,14 @@
           </div>
           <p id="passwordStatus" style="font-size:0.85rem;color:var(--text-secondary);margin:8px 0">Estado: Sin contraseña</p>
         </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:24px">
+          <h3 style="margin:0 0 12px;color:var(--text-primary)">👑 Gestión de Roles</h3>
+          <div class="admin-controls">
+            <button onclick="loadAdminUsers()" style="width:100%;padding:12px">📋 Ver Administradores</button>
+          </div>
+          <div id="adminUsersList" style="margin-top:16px"></div>
+        </div>
       </div>
     </div>
 
@@ -225,6 +233,25 @@
         <div class="modal-buttons">
           <button class="cancel" onclick="closeModal()">Cancelar</button>
           <button class="confirm" onclick="confirmChangeName()">Cambiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para promover usuario -->
+    <div id="promoteModal" class="modal-overlay">
+      <div class="modal-dialog">
+        <h3>Promover Usuario a Admin</h3>
+        <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:16px">Usuario: <strong id="promoteUsername"></strong></p>
+        <label style="display:block;margin-bottom:8px;font-weight:600">Selecciona Rol:</label>
+        <select id="promoteRoleSelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px;font-family:inherit">
+          <option value="Mod Junior">Mod Junior</option>
+          <option value="Mod">Mod</option>
+          <option value="Admin">Admin</option>
+          <option value="Dueño">Dueño</option>
+        </select>
+        <div class="modal-buttons">
+          <button class="cancel" onclick="closePromoteModal()">Cancelar</button>
+          <button class="confirm" onclick="confirmPromote()">Promover</button>
         </div>
       </div>
     </div>

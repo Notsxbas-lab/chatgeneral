@@ -62,6 +62,10 @@ const changeNameModal = document.getElementById('changeNameModal');
 const newNameInput = document.getElementById('newNameInput');
 const toast = document.getElementById('toast');
 const toastMessage = document.getElementById('toastMessage');
+const adminUsersList = document.getElementById('adminUsersList');
+const promoteModal = document.getElementById('promoteModal');
+const promoteUsername = document.getElementById('promoteUsername');
+const promoteRoleSelect = document.getElementById('promoteRoleSelect');
 
 // State
 let users = [];
@@ -69,7 +73,9 @@ let bannedIps = [];
 let rooms = new Set();
 let chatRunning = true;
 let selectedUserId = null;
+let selectedPromoteUserId = null;
 let hasPassword = false;
+let adminUsers = [];
 
 // Socket events
 socket.on('connect', () => {
@@ -161,6 +167,26 @@ socket.on('passwordSet', () => {
   showToast('Contraseña establecida', 'success');
 });
 
+socket.on('adminUsersList', (data) => {
+  adminUsers = data.admins || [];
+  renderAdminUsers(data.roles || []);
+});
+
+socket.on('userPromoted', (data) => {
+  showToast(`${data.username} promovido a ${data.role}`, 'success');
+  loadAdminUsers();
+});
+
+socket.on('userDemoted', (data) => {
+  showToast(`${data.username} removido de administradores`, 'warning');
+  loadAdminUsers();
+});
+
+socket.on('userRoleChanged', (data) => {
+  showToast(`Rol de ${data.username} cambiado a ${data.newRole}`, 'success');
+  loadAdminUsers();
+});
+
 // Functions
 function requestAdminData() {
   socket.emit('getAdminData');
@@ -220,6 +246,7 @@ function renderUsers() {
             <td>
               <div class="action-buttons">
                 <button class="edit-name" onclick="openChangeNameModal('${user.id}', '${user.username}')">✏️ Nombre</button>
+                <button class="promote-btn" onclick="openPromoteModal('${user.id}', '${user.username}')">👑 Promover</button>
                 <button class="kick" onclick="kickUser('${user.id}', '${user.username}')">⛔ Kick</button>
                 <button class="ban" onclick="banUser('${user.ip}', '${user.username}')">🚫 Ban</button>
               </div>
@@ -302,6 +329,74 @@ function confirmChangeName() {
   closeModal();
 }
 
+function loadAdminUsers() {
+  socket.emit('getAdminUsers');
+}
+
+function renderAdminUsers(availableRoles) {
+  if (adminUsers.length === 0) {
+    adminUsersList.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem;padding:12px">No hay administradores asignados</p>';
+    return;
+  }
+
+  adminUsersList.innerHTML = `
+    <div class="admin-users-list">
+      ${adminUsers.map(admin => {
+        const roleClass = admin.role.toLowerCase().replace(' ', '-');
+        return `
+          <div class="admin-user-item">
+            <div class="admin-user-info">
+              <div class="name">${admin.username}</div>
+              <span class="role-badge ${roleClass}">${admin.role}</span>
+            </div>
+            <div class="admin-user-actions">
+              <select class="role-select" onchange="changeUserRole('${admin.id}', this.value)">
+                <option value="">Cambiar rol...</option>
+                ${availableRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
+              </select>
+              <button class="demote-btn" onclick="demoteAdmin('${admin.id}', '${admin.username}')">⬇️ Degradar</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function openPromoteModal(userId, username) {
+  selectedPromoteUserId = userId;
+  promoteUsername.textContent = username;
+  promoteModal.classList.add('active');
+}
+
+function closePromoteModal() {
+  promoteModal.classList.remove('active');
+  selectedPromoteUserId = null;
+}
+
+function confirmPromote() {
+  const role = promoteRoleSelect.value;
+  if (!role) {
+    showToast('Selecciona un rol', 'error');
+    return;
+  }
+  socket.emit('promoteToAdmin', { userId: selectedPromoteUserId, role });
+  closePromoteModal();
+}
+
+function changeUserRole(userId, newRole) {
+  if (!newRole) return;
+  if (confirm(`¿Cambiar rol a ${newRole}?`)) {
+    socket.emit('changeUserRole', { userId, newRole });
+  }
+}
+
+function demoteAdmin(userId, username) {
+  if (confirm(`¿Remover permisos de administrador de ${username}?`)) {
+    socket.emit('demoteAdmin', { userId });
+  }
+}
+
 function showToast(message, type = 'info') {
   toastMessage.textContent = message;
   toast.className = `toast show ${type}`;
@@ -353,8 +448,14 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && changeNameModal.classList.contains('active')) {
     closeModal();
   }
+  if (e.key === 'Escape' && promoteModal.classList.contains('active')) {
+    closePromoteModal();
+  }
   if (e.key === 'Enter' && changeNameModal.classList.contains('active')) {
     confirmChangeName();
+  }
+  if (e.key === 'Enter' && promoteModal.classList.contains('active')) {
+    confirmPromote();
   }
 });
 
