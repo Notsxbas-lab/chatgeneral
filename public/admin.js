@@ -208,6 +208,11 @@ socket.on('userPromoted', (data) => {
   loadAdminUsers();
 });
 
+socket.on('adminRegistered', (data) => {
+  showToast(`${data.username} registrado como ${data.role}`, 'success');
+  loadAdminUsers();
+});
+
 socket.on('userDemoted', (data) => {
   showToast(`${data.username} removido de administradores`, 'warning');
   loadAdminUsers();
@@ -357,10 +362,12 @@ function confirmChangeName() {
 
 function loadAdminUsers() {
   socket.emit('getAdminUsers');
+  socket.emit('getAdminData');
 }
 
 function refreshUsers() {
   socket.emit('getAdminData');
+  loadAdminUsers();
   showToast('Datos actualizados', 'success');
 }
 
@@ -478,6 +485,7 @@ function addAdminByName() {
   socket.emit('registerAdmin', { username, role });
   document.getElementById('addAdminUsername').value = '';
   showToast(`${username} registrado como ${role}`, 'success');
+  setTimeout(() => loadAdminUsers(), 500);
   setTimeout(() => loadAdminUsers(), 1000);
 }
 

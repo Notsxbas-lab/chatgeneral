@@ -374,6 +374,7 @@ socket.on('adminSetPassword', ({ password }) => {
     
     registeredAdmins.set(username, { role });
     console.log(`Admin registrado: ${username} con rol ${role}`);
+    io.to('admin').emit('adminRegistered', { userId: username, username, role });
     io.to('admin').emit('userPromoted', { userId: username, username, role });
   });
 
