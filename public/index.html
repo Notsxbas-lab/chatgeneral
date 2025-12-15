@@ -52,10 +52,10 @@
       .room-item:hover{background:var(--primary);color:white;border-color:var(--primary)}
       .room-item.active{background:var(--primary);color:white;border-color:var(--primary);font-weight:600}
 
-      .create-room{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;background:linear-gradient(180deg,#e3f2fd 0%,var(--bg-light) 100%)}
-      .create-room input{flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:inherit}
-      .create-room input#newRoomPassword{flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:inherit}
-      .create-room button{padding:8px 12px;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem}
+      .create-room{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;background:linear-gradient(180deg,#e3f2fd 0%,var(--bg-light) 100%);overflow-x:auto}
+      .create-room input{flex:1;min-width:100px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:inherit}
+      .create-room input#newRoomPassword{flex:1;min-width:100px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:inherit}
+      .create-room button{padding:8px 12px;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem;flex-shrink:0}
 
       .main{flex:1;display:flex;flex-direction:column}
 
