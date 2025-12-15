@@ -153,21 +153,6 @@ function restoreAdminStateFromCache() {
     renderBannedIps();
   }
 
-    if (saveRulesBtn) {
-      saveRulesBtn.addEventListener('click', () => {
-        const text = rulesTextInput?.value || '';
-        socket.emit('setRulesText', { text });
-        autoLogDatabaseRecord('Reglas Actualizadas', text.substring(0, 100), 'config');
-        showToast('Reglas guardadas', 'success');
-      });
-    }
-
-    if (refreshRulesBtn) {
-      refreshRulesBtn.addEventListener('click', () => {
-        socket.emit('getRulesText');
-        showToast('Reglas actualizadas', 'success');
-      });
-    }
   const cachedRooms = loadState(STORAGE_KEYS.rooms);
   if (Array.isArray(cachedRooms)) {
     rooms = new Set(cachedRooms);
@@ -1203,3 +1188,20 @@ window.showSection = function(sectionName) {
     loadDatabaseRecords();
   }
 };
+
+// ===== INICIALIZACIÓN DE REGLAS =====
+// Configurar event listeners para los botones de reglas
+if (saveRulesBtn) {
+  saveRulesBtn.addEventListener('click', () => {
+    const text = rulesTextInput?.value || '';
+    socket.emit('setRulesText', { text });
+    showToast('Reglas guardadas correctamente', 'success');
+  });
+}
+
+if (refreshRulesBtn) {
+  refreshRulesBtn.addEventListener('click', () => {
+    socket.emit('getRulesText');
+    showToast('Reglas actualizadas', 'success');
+  });
+}
