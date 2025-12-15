@@ -939,6 +939,66 @@ window.confirmChangeAdminPassword = confirmChangeAdminPassword;
 window.demoteAdmin = demoteAdmin;
 window.changeUserRole = changeUserRole;
 
+// ===== GESTIÓN DE SALAS =====
+function loadRoomsList() {
+  socket.emit('getRoomsList', (response) => {
+    const container = document.getElementById('roomsListContainer');
+    if (!container) return;
+    
+    if (!response.success || !response.rooms || response.rooms.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">No hay salas disponibles</div>';
+      return;
+    }
+    
+    container.innerHTML = response.rooms.map(room => {
+      const isProtected = room.protected;
+      const lockIcon = room.locked ? '🔒' : '🔓';
+      const protectedBadge = isProtected ? '<span style="background:#ffc107;color:#000;padding:2px 6px;border-radius:4px;font-size:0.75rem;margin-left:8px">Protegida</span>' : '';
+      
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg-light);border-radius:8px">
+          <div>
+            <span style="font-weight:600;font-size:1rem">${lockIcon} #${room.name}</span>
+            ${protectedBadge}
+            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px">
+              ${room.usersCount} usuario${room.usersCount !== 1 ? 's' : ''} conectado${room.usersCount !== 1 ? 's' : ''}
+            </div>
+          </div>
+          ${!isProtected ? `
+            <button onclick="deleteRoom('${room.name}')" style="padding:8px 14px;background:var(--danger);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">
+              🗑️ Eliminar
+            </button>
+          ` : '<span style="color:var(--text-secondary);font-size:0.85rem">No eliminable</span>'}
+        </div>
+      `;
+    }).join('');
+  });
+}
+
+function deleteRoom(roomName) {
+  if (!confirm(`¿Estás seguro de eliminar la sala "${roomName}"?\n\nLos usuarios serán movidos a la sala global.`)) {
+    return;
+  }
+  
+  socket.emit('deleteRoom', { room: roomName }, (response) => {
+    if (response.success) {
+      showToast(`Sala "${roomName}" eliminada`, 'success');
+      loadRoomsList();
+    } else {
+      showToast(response.message || 'Error al eliminar sala', 'error');
+    }
+  });
+}
+
+// Escuchar evento de sala eliminada
+socket.on('roomDeleted', (data) => {
+  showToast(`Sala "${data.room}" eliminada`, 'warning');
+  loadRoomsList();
+});
+
+window.loadRoomsList = loadRoomsList;
+window.deleteRoom = deleteRoom;
+
 // ===== MONITOREO EN VIVO =====
 let isMonitoring = false;
 

@@ -58,8 +58,24 @@ const userDatabaseSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Esquema para mensajes del chat
+const chatMessageSchema = new mongoose.Schema({
+  messageId: { type: String, unique: true },
+  socketId: String,
+  username: String,
+  message: String,
+  room: { type: String, default: 'global' },
+  type: { type: String, default: 'text' },
+  imageData: String,
+  avatarColor: String,
+  avatarEmoji: String,
+  profileImage: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
 const ChatData = mongoose.model('ChatData', chatDataSchema);
 const UserDatabase = mongoose.model('UserDatabase', userDatabaseSchema);
+const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 
 // State
 const connectedUsers = new Map(); // socketId -> { id, username, ip, room, socketId, ... }
@@ -418,6 +434,97 @@ io.on('connection', (socket) => {
     cb && cb({ success: true, room: cleanRoom, locked: roomPasswords.has(cleanRoom) });
   });
 
+  // Eliminar sala (solo admin)
+  socket.on('deleteRoom', ({ room } = {}, cb) => {
+    if (!socket.isAdmin) {
+      cb && cb({ success: false, message: 'No autorizado' });
+      return;
+    }
+
+    const cleanRoom = String(room || '').trim();
+    
+    // No permitir eliminar salas protegidas
+    const protectedRooms = ['global', 'ayudas', 'reglas'];
+    if (protectedRooms.includes(cleanRoom)) {
+      cb && cb({ success: false, message: 'No se puede eliminar esta sala' });
+      return;
+    }
+
+    if (!roomsList.has(cleanRoom)) {
+      cb && cb({ success: false, message: 'La sala no existe' });
+      return;
+    }
+
+    // Mover usuarios de la sala a global
+    io.in(cleanRoom).socketsJoin('global');
+    io.in(cleanRoom).emit('system', `La sala "${cleanRoom}" ha sido eliminada. Has sido movido a global.`);
+    io.in(cleanRoom).socketsLeave(cleanRoom);
+
+    // Eliminar la sala
+    roomsList.delete(cleanRoom);
+    roomPasswords.delete(cleanRoom);
+
+    saveData();
+    broadcastRooms();
+    io.to('admin').emit('roomDeleted', { room: cleanRoom });
+    cb && cb({ success: true, room: cleanRoom });
+  });
+
+  // Obtener lista de salas (para admin)
+  socket.on('getRoomsList', (cb) => {
+    if (!socket.isAdmin) {
+      cb && cb({ success: false, rooms: [] });
+      return;
+    }
+    
+    const rooms = Array.from(roomsList).map(name => ({
+      name,
+      locked: roomPasswords.has(name),
+      protected: ['global', 'ayudas', 'reglas'].includes(name),
+      usersCount: io.sockets.adapter.rooms.get(name)?.size || 0
+    }));
+    
+    cb && cb({ success: true, rooms });
+  });
+
+  // Obtener mensajes guardados de una sala
+  socket.on('getSavedMessages', async ({ room, limit } = {}, cb) => {
+    const targetRoom = room || 'global';
+    const msgLimit = Math.min(limit || 50, 100);
+    
+    if (mongoConnected) {
+      try {
+        const messages = await ChatMessage.find({ room: targetRoom })
+          .sort({ createdAt: -1 })
+          .limit(msgLimit)
+          .lean();
+        
+        const formatted = messages.reverse().map(m => ({
+          id: m.messageId,
+          socketId: m.socketId,
+          username: m.username,
+          message: m.message,
+          time: new Date(m.createdAt).getTime(),
+          room: m.room,
+          type: m.type,
+          image: m.imageData,
+          avatarColor: m.avatarColor,
+          avatarEmoji: m.avatarEmoji,
+          profileImage: m.profileImage
+        }));
+        
+        cb && cb({ success: true, messages: formatted });
+      } catch (err) {
+        console.error('Error obteniendo mensajes:', err.message);
+        cb && cb({ success: false, messages: [] });
+      }
+    } else {
+      // Fallback: mensajes del historial local
+      const localMessages = messageHistory.filter(m => m.room === targetRoom).slice(-msgLimit);
+      cb && cb({ success: true, messages: localMessages });
+    }
+  });
+
   // join: { username, room, avatarColor, avatarEmoji, profileImage, bgColor }
   socket.on('join', ({ username, room, avatarColor, avatarEmoji, profileImage, bgColor, password } = {}) => {
     socket.username = username || 'Anon';
@@ -559,10 +666,27 @@ io.on('connection', (socket) => {
       replyTo: (typeof msg === 'object' && msg.replyTo) ? msg.replyTo : undefined
     };
     
-    // Guardar en historial
+    // Guardar en historial local
     messageHistory.push(payload);
     if (messageHistory.length > MAX_HISTORY) {
       messageHistory.shift();
+    }
+    
+    // Guardar en MongoDB (solo sala global)
+    if (mongoConnected && payload.room === 'global') {
+      const chatMsg = new ChatMessage({
+        messageId: payload.id,
+        socketId: payload.socketId,
+        username: payload.username,
+        message: payload.message,
+        room: payload.room,
+        type: payload.type,
+        imageData: payload.image,
+        avatarColor: payload.avatarColor,
+        avatarEmoji: payload.avatarEmoji,
+        profileImage: payload.profileImage
+      });
+      chatMsg.save().catch(err => console.error('Error guardando mensaje:', err.message));
     }
     
     io.to(payload.room).emit('message', payload);

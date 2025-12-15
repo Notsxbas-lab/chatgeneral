@@ -528,6 +528,14 @@ socket.on('roomJoined', ({ room }) => {
   }
   if (room === 'reglas') {
     socket.emit('getRulesText');
+  } else if (room === 'global') {
+    // Cargar mensajes guardados de la sala global
+    socket.emit('getSavedMessages', { room: 'global', limit: 50 }, (response) => {
+      if (response.success && response.messages && response.messages.length > 0) {
+        response.messages.forEach(msg => appendMessage(msg));
+        appendSystem('--- Mensajes anteriores cargados ---');
+      }
+    });
   }
   renderRooms();
 });

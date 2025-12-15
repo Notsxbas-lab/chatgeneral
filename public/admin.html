@@ -234,6 +234,12 @@
           </a>
         </li>
         <li class="sidebar-item">
+          <a onclick="showSection('rooms')" class="sidebar-link">
+            <span class="sidebar-icon">🏠</span>
+            <span class="sidebar-text">Salas</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
           <a onclick="showSection('live')" class="sidebar-link">
             <span class="sidebar-icon">🔴</span>
             <span class="sidebar-text">Monitoreo</span>
@@ -352,6 +358,18 @@
           <button id="banIpBtn" class="danger">🚫 Banear IP</button>
         </div>
         <div id="bannedIpsList" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Sección Gestión de Salas -->
+      <div class="admin-section" id="section-rooms">
+        <h2>🏠 Gestión de Salas</h2>
+        <p style="color:var(--text-secondary);margin-bottom:16px">Administra las salas de chat. Las salas protegidas (global, ayudas, reglas) no se pueden eliminar.</p>
+        <div class="admin-controls" style="margin-bottom:16px">
+          <button onclick="loadRoomsList()" style="flex:1;padding:12px">🔄 Actualizar Lista</button>
+        </div>
+        <div id="roomsListContainer" style="display:grid;gap:12px">
+          <div style="text-align:center;padding:20px;color:var(--text-secondary)">Haz clic en "Actualizar Lista" para ver las salas</div>
+        </div>
       </div>
 
       <!-- Sección Historial de Mensajes -->
