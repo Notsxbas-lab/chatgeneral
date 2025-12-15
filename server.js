@@ -14,9 +14,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ===== CONEXIÓN A MONGODB =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://scamren559_db_user:oaIPyyDdysVijYlZ@chatgeneral.zjsbodx.mongodb.net/chatgeneral?retryWrites=true&w=majority';
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✅ Conectado a MongoDB Atlas'))
-  .catch(err => console.error('❌ Error conectando a MongoDB:', err));
+let mongoConnected = false;
+
+mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+})
+  .then(() => {
+    console.log('✅ Conectado a MongoDB Atlas');
+    mongoConnected = true;
+  })
+  .catch(err => {
+    console.error('❌ Error conectando a MongoDB:', err.message);
+    console.log('⚠️ Usando almacenamiento local como fallback');
+    mongoConnected = false;
+  });
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ MongoDB desconectado');
+  mongoConnected = false;
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconectado');
+  mongoConnected = true;
+});
 
 // ===== ESQUEMAS DE MONGODB =====
 const chatDataSchema = new mongoose.Schema({
@@ -59,157 +81,172 @@ let userDatabase = [];
 
 // ===== FUNCIONES DE MONGODB =====
 async function saveData() {
+  // Primero guardar en archivo local siempre (rápido y confiable)
   try {
-    const data = {
-      key: 'main',
+    const localData = {
       rulesText,
       rooms: Array.from(roomsList),
-      roomPasswords: Object.fromEntries(roomPasswords),
+      roomPasswords: Array.from(roomPasswords.entries()),
       bannedIps: Array.from(bannedIps),
       badWords: Array.from(badWords),
-      registeredAdmins: Object.fromEntries(registeredAdmins)
+      registeredAdmins: Array.from(registeredAdmins.entries())
     };
-    
-    await ChatData.findOneAndUpdate(
-      { key: 'main' },
-      data,
-      { upsert: true, new: true }
-    );
-    console.log('✅ Datos guardados en MongoDB');
-  } catch (err) {
-    console.error('❌ Error guardando en MongoDB:', err);
-    // Fallback a archivo local
+    fs.writeFileSync(DATA_FILE, JSON.stringify(localData, null, 2), 'utf8');
+    console.log('📁 Datos guardados localmente');
+  } catch (fileErr) {
+    console.error('Error al guardar archivo local:', fileErr);
+  }
+
+  // Luego intentar guardar en MongoDB si está conectado
+  if (mongoConnected) {
     try {
-      const localData = {
+      const data = {
+        key: 'main',
         rulesText,
         rooms: Array.from(roomsList),
-        roomPasswords: Array.from(roomPasswords.entries()),
+        roomPasswords: Object.fromEntries(roomPasswords),
         bannedIps: Array.from(bannedIps),
         badWords: Array.from(badWords),
-        registeredAdmins: Array.from(registeredAdmins.entries())
+        registeredAdmins: Object.fromEntries(registeredAdmins)
       };
-      fs.writeFileSync(DATA_FILE, JSON.stringify(localData, null, 2), 'utf8');
-      console.log('📁 Datos guardados en archivo local (fallback)');
-    } catch (fileErr) {
-      console.error('Error al guardar archivo local:', fileErr);
+      
+      await ChatData.findOneAndUpdate(
+        { key: 'main' },
+        data,
+        { upsert: true, new: true }
+      );
+      console.log('✅ Datos sincronizados con MongoDB');
+    } catch (err) {
+      console.error('❌ Error guardando en MongoDB:', err.message);
     }
   }
 }
 
 async function loadData() {
+  // Primero cargar desde archivo local (siempre disponible)
   try {
-    const data = await ChatData.findOne({ key: 'main' });
-    
-    if (data) {
-      if (data.rulesText) rulesText = data.rulesText;
-      if (data.rooms && data.rooms.length > 0) {
+    if (fs.existsSync(DATA_FILE)) {
+      const localData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      if (localData.rulesText) rulesText = localData.rulesText;
+      if (localData.rooms) {
         roomsList.clear();
-        data.rooms.forEach(r => roomsList.add(r));
+        localData.rooms.forEach(r => roomsList.add(r));
       }
-      if (data.roomPasswords) {
+      if (localData.roomPasswords) {
         roomPasswords.clear();
-        if (data.roomPasswords instanceof Map) {
-          data.roomPasswords.forEach((pass, room) => roomPasswords.set(room, pass));
-        } else {
-          Object.entries(data.roomPasswords).forEach(([room, pass]) => roomPasswords.set(room, pass));
-        }
+        localData.roomPasswords.forEach(([room, pass]) => roomPasswords.set(room, pass));
       }
-      if (data.bannedIps) {
+      if (localData.bannedIps) {
         bannedIps.clear();
-        data.bannedIps.forEach(ip => bannedIps.add(ip));
+        localData.bannedIps.forEach(ip => bannedIps.add(ip));
       }
-      if (data.badWords) {
+      if (localData.badWords) {
         badWords.clear();
-        data.badWords.forEach(word => badWords.add(word));
+        localData.badWords.forEach(word => badWords.add(word));
       }
-      if (data.registeredAdmins) {
-        if (data.registeredAdmins instanceof Map) {
-          data.registeredAdmins.forEach((adminData, username) => {
-            registeredAdmins.set(username, adminData);
-          });
-        } else {
-          Object.entries(data.registeredAdmins).forEach(([username, adminData]) => {
-            registeredAdmins.set(username, adminData);
-          });
-        }
+      if (localData.registeredAdmins) {
+        localData.registeredAdmins.forEach(([username, adminData]) => {
+          registeredAdmins.set(username, adminData);
+        });
       }
-      console.log('✅ Datos cargados desde MongoDB');
-    } else {
-      console.log('📝 No hay datos en MongoDB, usando valores por defecto');
-      // Guardar datos iniciales
-      await saveData();
+      console.log('📁 Datos cargados desde archivo local');
     }
-  } catch (err) {
-    console.error('❌ Error cargando desde MongoDB:', err);
-    // Fallback a archivo local
+  } catch (fileErr) {
+    console.error('Error al cargar archivo local:', fileErr);
+  }
+
+  // Luego intentar sincronizar con MongoDB si está conectado
+  if (mongoConnected) {
     try {
-      if (fs.existsSync(DATA_FILE)) {
-        const localData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-        if (localData.rulesText) rulesText = localData.rulesText;
-        if (localData.rooms) {
+      const data = await ChatData.findOne({ key: 'main' });
+      
+      if (data) {
+        if (data.rulesText) rulesText = data.rulesText;
+        if (data.rooms && data.rooms.length > 0) {
           roomsList.clear();
-          localData.rooms.forEach(r => roomsList.add(r));
+          data.rooms.forEach(r => roomsList.add(r));
         }
-        if (localData.roomPasswords) {
+        if (data.roomPasswords) {
           roomPasswords.clear();
-          localData.roomPasswords.forEach(([room, pass]) => roomPasswords.set(room, pass));
+          if (data.roomPasswords instanceof Map) {
+            data.roomPasswords.forEach((pass, room) => roomPasswords.set(room, pass));
+          } else {
+            Object.entries(data.roomPasswords).forEach(([room, pass]) => roomPasswords.set(room, pass));
+          }
         }
-        if (localData.bannedIps) {
+        if (data.bannedIps) {
           bannedIps.clear();
-          localData.bannedIps.forEach(ip => bannedIps.add(ip));
+          data.bannedIps.forEach(ip => bannedIps.add(ip));
         }
-        if (localData.badWords) {
+        if (data.badWords) {
           badWords.clear();
-          localData.badWords.forEach(word => badWords.add(word));
+          data.badWords.forEach(word => badWords.add(word));
         }
-        if (localData.registeredAdmins) {
-          localData.registeredAdmins.forEach(([username, adminData]) => {
-            registeredAdmins.set(username, adminData);
-          });
+        if (data.registeredAdmins) {
+          if (data.registeredAdmins instanceof Map) {
+            data.registeredAdmins.forEach((adminData, username) => {
+              registeredAdmins.set(username, adminData);
+            });
+          } else {
+            Object.entries(data.registeredAdmins).forEach(([username, adminData]) => {
+              registeredAdmins.set(username, adminData);
+            });
+          }
         }
-        console.log('📁 Datos cargados desde archivo local (fallback)');
+        console.log('✅ Datos sincronizados desde MongoDB');
       }
-    } catch (fileErr) {
-      console.error('Error al cargar archivo local:', fileErr);
+    } catch (err) {
+      console.error('❌ Error cargando desde MongoDB:', err.message);
     }
   }
 }
 
-// Cargar datos cuando MongoDB esté conectado
+// Cargar datos al iniciar (desde archivo local primero)
+loadData();
+
+// Sincronizar con MongoDB cuando esté conectado
 mongoose.connection.once('open', async () => {
   await loadData();
   await loadUserDatabase();
 });
 
 async function saveUserDatabase() {
-  // Los registros de UserDatabase se guardan individualmente
-  console.log('Base de datos de usuarios sincronizada');
+  // Guardar en archivo local
+  try {
+    fs.writeFileSync(DATABASE_FILE, JSON.stringify(userDatabase, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error guardando base de datos local:', err);
+  }
 }
 
 async function loadUserDatabase() {
+  // Primero cargar desde archivo local
   try {
-    const records = await UserDatabase.find({});
-    userDatabase = records.map(r => ({
-      _id: r._id.toString(),
-      key: r.key,
-      value: r.value,
-      category: r.category,
-      createdAt: r.createdAt
-    }));
-    console.log('✅ Base de datos cargada:', userDatabase.length, 'registros');
-  } catch (err) {
-    console.error('❌ Error cargando base de datos:', err);
-    // Fallback
+    if (fs.existsSync(DATABASE_FILE)) {
+      userDatabase = JSON.parse(fs.readFileSync(DATABASE_FILE, 'utf8'));
+      console.log('📁 Base de datos cargada:', userDatabase.length, 'registros');
+    }
+  } catch (fileErr) {
+    console.error('Error al cargar base de datos local:', fileErr);
+    userDatabase = [];
+  }
+
+  // Luego sincronizar con MongoDB si está conectado
+  if (mongoConnected) {
     try {
-      if (fs.existsSync(DATABASE_FILE)) {
-        userDatabase = JSON.parse(fs.readFileSync(DATABASE_FILE, 'utf8'));
-        console.log('📁 Base de datos cargada desde archivo local');
-      } else {
-        userDatabase = [];
+      const records = await UserDatabase.find({});
+      if (records.length > 0) {
+        userDatabase = records.map(r => ({
+          _id: r._id.toString(),
+          key: r.key,
+          value: r.value,
+          category: r.category,
+          createdAt: r.createdAt
+        }));
+        console.log('✅ Base de datos sincronizada desde MongoDB:', userDatabase.length, 'registros');
       }
-    } catch (fileErr) {
-      console.error('Error al cargar base de datos:', fileErr);
-      userDatabase = [];
+    } catch (err) {
+      console.error('❌ Error sincronizando base de datos:', err.message);
     }
   }
 }
@@ -1017,30 +1054,36 @@ socket.on('adminSetPassword', ({ password }) => {
       return;
     }
     
-    try {
-      const record = new UserDatabase({
-        key: String(key).trim().substring(0, 100),
-        value: String(value).trim().substring(0, 500),
-        category: String(category || 'general').substring(0, 50)
-      });
-      
-      await record.save();
-      
-      // Actualizar lista local
-      userDatabase.push({
-        _id: record._id.toString(),
-        key: record.key,
-        value: record.value,
-        category: record.category,
-        createdAt: record.createdAt
-      });
-      
-      cb && cb({ success: true, record });
-      io.to('admin').emit('databaseRecords', userDatabase);
-    } catch (err) {
-      console.error('Error agregando registro:', err);
-      cb && cb({ success: false, message: 'Error al guardar' });
+    // Crear registro local primero
+    const localRecord = {
+      _id: Date.now().toString(),
+      key: String(key).trim().substring(0, 100),
+      value: String(value).trim().substring(0, 500),
+      category: String(category || 'general').substring(0, 50),
+      createdAt: new Date()
+    };
+    
+    userDatabase.push(localRecord);
+    saveUserDatabase();
+    
+    // Intentar guardar en MongoDB si está conectado
+    if (mongoConnected) {
+      try {
+        const record = new UserDatabase({
+          key: localRecord.key,
+          value: localRecord.value,
+          category: localRecord.category
+        });
+        await record.save();
+        // Actualizar ID local con el de MongoDB
+        localRecord._id = record._id.toString();
+      } catch (err) {
+        console.error('Error guardando en MongoDB:', err.message);
+      }
     }
+    
+    cb && cb({ success: true, record: localRecord });
+    io.to('admin').emit('databaseRecords', userDatabase);
   });
 
   socket.on('getDatabaseRecords', async (cb) => {
@@ -1049,20 +1092,25 @@ socket.on('adminSetPassword', ({ password }) => {
       return;
     }
     
-    try {
-      const records = await UserDatabase.find({}).sort({ createdAt: -1 });
-      userDatabase = records.map(r => ({
-        _id: r._id.toString(),
-        key: r.key,
-        value: r.value,
-        category: r.category,
-        createdAt: r.createdAt
-      }));
-      cb && cb({ success: true, records: userDatabase });
-    } catch (err) {
-      console.error('Error obteniendo registros:', err);
-      cb && cb({ success: true, records: userDatabase });
+    // Sincronizar con MongoDB si está conectado
+    if (mongoConnected) {
+      try {
+        const records = await UserDatabase.find({}).sort({ createdAt: -1 });
+        if (records.length > 0) {
+          userDatabase = records.map(r => ({
+            _id: r._id.toString(),
+            key: r.key,
+            value: r.value,
+            category: r.category,
+            createdAt: r.createdAt
+          }));
+        }
+      } catch (err) {
+        console.error('Error sincronizando registros:', err.message);
+      }
     }
+    
+    cb && cb({ success: true, records: userDatabase });
   });
 
   socket.on('updateDatabaseRecord', async ({ id, value }, cb) => {
@@ -1071,28 +1119,24 @@ socket.on('adminSetPassword', ({ password }) => {
       return;
     }
     
-    try {
-      const record = await UserDatabase.findByIdAndUpdate(
-        id,
-        { value: String(value).trim().substring(0, 500) },
-        { new: true }
-      );
-      
-      if (record) {
-        // Actualizar lista local
-        const localRecord = userDatabase.find(r => r._id === id);
-        if (localRecord) {
-          localRecord.value = record.value;
-        }
-        cb && cb({ success: true });
-        io.to('admin').emit('databaseRecords', userDatabase);
-      } else {
-        cb && cb({ success: false });
-      }
-    } catch (err) {
-      console.error('Error actualizando registro:', err);
-      cb && cb({ success: false });
+    // Actualizar localmente primero
+    const localRecord = userDatabase.find(r => r._id === id);
+    if (localRecord) {
+      localRecord.value = String(value).trim().substring(0, 500);
+      saveUserDatabase();
     }
+    
+    // Intentar actualizar en MongoDB
+    if (mongoConnected) {
+      try {
+        await UserDatabase.findByIdAndUpdate(id, { value: localRecord.value });
+      } catch (err) {
+        console.error('Error actualizando en MongoDB:', err.message);
+      }
+    }
+    
+    cb && cb({ success: true });
+    io.to('admin').emit('databaseRecords', userDatabase);
   });
 
   socket.on('deleteDatabaseRecord', async ({ id }, cb) => {
@@ -1101,21 +1145,24 @@ socket.on('adminSetPassword', ({ password }) => {
       return;
     }
     
-    try {
-      await UserDatabase.findByIdAndDelete(id);
-      
-      // Actualizar lista local
-      const index = userDatabase.findIndex(r => r._id === id);
-      if (index !== -1) {
-        userDatabase.splice(index, 1);
-      }
-      
-      cb && cb({ success: true });
-      io.to('admin').emit('databaseRecords', userDatabase);
-    } catch (err) {
-      console.error('Error eliminando registro:', err);
-      cb && cb({ success: false });
+    // Eliminar localmente primero
+    const index = userDatabase.findIndex(r => r._id === id);
+    if (index !== -1) {
+      userDatabase.splice(index, 1);
+      saveUserDatabase();
     }
+    
+    // Intentar eliminar en MongoDB
+    if (mongoConnected) {
+      try {
+        await UserDatabase.findByIdAndDelete(id);
+      } catch (err) {
+        console.error('Error eliminando en MongoDB:', err.message);
+      }
+    }
+    
+    cb && cb({ success: true });
+    io.to('admin').emit('databaseRecords', userDatabase);
   });
 });
 
@@ -1129,4 +1176,4 @@ server.listen(PORT, () => {
     console.log(`  - ${username}: ${data.role}`);
   });
   console.log('=========================');
-})
+});
