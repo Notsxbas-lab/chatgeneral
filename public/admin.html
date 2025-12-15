@@ -171,6 +171,37 @@
       .word-badge{background:var(--danger);color:white;padding:6px 12px;border-radius:12px;font-size:0.85rem;display:flex;align-items:center;gap:6px}
       .word-badge button{background:rgba(255,255,255,0.3);border:none;color:white;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:0.7rem}
       .word-badge button:hover{background:rgba(255,255,255,0.5)}
+
+      /* Modal de confirmación personalizado */
+      #customConfirmModal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);z-index:9999;animation:fadeInModal 0.25s ease}
+      #customConfirmModal.active{display:flex}
+      @keyframes fadeInModal{from{opacity:0}to{opacity:1}}
+      .confirm-dialog{background:white;padding:0;border-radius:16px;min-width:380px;max-width:450px;box-shadow:0 25px 80px rgba(0,0,0,0.35);overflow:hidden;animation:scaleIn 0.3s cubic-bezier(0.34,1.56,0.64,1)}
+      @keyframes scaleIn{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
+      .confirm-header{padding:24px 24px 16px;display:flex;align-items:center;gap:16px}
+      .confirm-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0}
+      .confirm-icon.warning{background:linear-gradient(135deg,#fff3cd,#ffeeba);color:#856404}
+      .confirm-icon.danger{background:linear-gradient(135deg,#f8d7da,#f5c6cb);color:#721c24}
+      .confirm-icon.info{background:linear-gradient(135deg,#d1ecf1,#bee5eb);color:#0c5460}
+      .confirm-icon.success{background:linear-gradient(135deg,#d4edda,#c3e6cb);color:#155724}
+      .confirm-content{flex:1}
+      .confirm-content h3{margin:0 0 4px;font-size:1.15rem;color:var(--text-primary)}
+      .confirm-content p{margin:0;color:var(--text-secondary);font-size:0.9rem;line-height:1.4}
+      .confirm-body{padding:0 24px 20px;color:var(--text-secondary);font-size:0.9rem;line-height:1.5}
+      .confirm-actions{display:flex;gap:12px;padding:16px 24px;background:var(--bg-light);justify-content:flex-end}
+      .confirm-actions button{padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;font-size:0.95rem;transition:all 0.2s}
+      .confirm-actions .btn-cancel{background:white;color:var(--text-primary);border:1px solid var(--border)}
+      .confirm-actions .btn-cancel:hover{background:#f5f5f5;border-color:#ccc}
+      .confirm-actions .btn-confirm{background:var(--primary);color:white}
+      .confirm-actions .btn-confirm:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,180,216,0.3)}
+      .confirm-actions .btn-confirm.danger{background:var(--danger)}
+      .confirm-actions .btn-confirm.danger:hover{background:#b71c1c;box-shadow:0 4px 12px rgba(211,47,47,0.3)}
+      .confirm-actions .btn-confirm.warning{background:var(--warning)}
+      .confirm-actions .btn-confirm.warning:hover{background:#ff8c00;box-shadow:0 4px 12px rgba(255,165,0,0.3)}
+      .confirm-actions .btn-confirm.success{background:var(--success)}
+      .confirm-actions .btn-confirm.success:hover{background:#00b371;box-shadow:0 4px 12px rgba(0,208,132,0.3)}
+      .confirm-actions .btn-confirm.info{background:var(--primary)}
+      .confirm-actions .btn-confirm.info:hover{background:var(--primary-dark);box-shadow:0 4px 12px rgba(0,180,216,0.3)}
     </style>
   </head>
 
@@ -579,6 +610,24 @@
     <!-- Toast para notificaciones -->
     <div id="toast" class="toast">
       <span id="toastMessage"></span>
+    </div>
+
+    <!-- Modal de confirmación personalizado -->
+    <div id="customConfirmModal">
+      <div class="confirm-dialog">
+        <div class="confirm-header">
+          <div class="confirm-icon warning" id="confirmIcon">⚠️</div>
+          <div class="confirm-content">
+            <h3 id="confirmTitle">Confirmar acción</h3>
+            <p id="confirmSubtitle"></p>
+          </div>
+        </div>
+        <div class="confirm-body" id="confirmBody"></div>
+        <div class="confirm-actions">
+          <button class="btn-cancel" id="confirmCancelBtn">Cancelar</button>
+          <button class="btn-confirm" id="confirmOkBtn">Aceptar</button>
+        </div>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

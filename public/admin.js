@@ -1,5 +1,73 @@
 const socket = io();
 
+// ===== MODAL DE CONFIRMACIÓN PERSONALIZADO =====
+let confirmCallback = null;
+
+function showCustomConfirm(options) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('customConfirmModal');
+    const icon = document.getElementById('confirmIcon');
+    const title = document.getElementById('confirmTitle');
+    const subtitle = document.getElementById('confirmSubtitle');
+    const body = document.getElementById('confirmBody');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    const okBtn = document.getElementById('confirmOkBtn');
+
+    // Configurar contenido
+    title.textContent = options.title || 'Confirmar acción';
+    subtitle.textContent = options.subtitle || '';
+    body.textContent = options.body || '';
+    body.style.display = options.body ? 'block' : 'none';
+
+    // Configurar tipo de ícono
+    const type = options.type || 'warning';
+    icon.className = 'confirm-icon ' + type;
+    const icons = {
+      warning: '⚠️',
+      danger: '🗑️',
+      info: 'ℹ️',
+      success: '✅',
+      question: '❓'
+    };
+    icon.textContent = options.icon || icons[type] || '⚠️';
+
+    // Configurar botones
+    cancelBtn.textContent = options.cancelText || 'Cancelar';
+    okBtn.textContent = options.confirmText || 'Aceptar';
+    okBtn.className = 'btn-confirm ' + (options.confirmClass || type);
+
+    // Mostrar modal
+    modal.classList.add('active');
+
+    // Limpiar eventos anteriores
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    const newOkBtn = okBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+    // Eventos
+    newCancelBtn.onclick = () => {
+      modal.classList.remove('active');
+      resolve(false);
+    };
+
+    newOkBtn.onclick = () => {
+      modal.classList.remove('active');
+      resolve(true);
+    };
+
+    // Cerrar con Escape
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.classList.remove('active');
+        document.removeEventListener('keydown', escHandler);
+        resolve(false);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  });
+}
+
 // Login
 const adminLoginOverlay = document.getElementById('adminLoginOverlay');
 const adminLoginUsername = document.getElementById('adminLoginUsername');
@@ -468,22 +536,49 @@ function renderBannedIps() {
   `;
 }
 
-function kickUser(userId, username) {
-  if (confirm(`¿Expulsar a ${username}?`)) {
+async function kickUser(userId, username) {
+  const confirmed = await showCustomConfirm({
+    title: 'Expulsar usuario',
+    subtitle: `¿Expulsar a ${username}?`,
+    body: 'El usuario será desconectado del chat inmediatamente.',
+    type: 'warning',
+    icon: '👢',
+    confirmText: 'Expulsar',
+    confirmClass: 'warning'
+  });
+  if (confirmed) {
     socket.emit('adminKick', { userId });
     autoLogDatabaseRecord(`Usuario Expulsado: ${username}`, `Acción realizada el ${new Date().toLocaleString('es-ES')}`, 'notas');
   }
 }
 
-function banUser(ip, username) {
-  if (confirm(`¿Banear la IP ${ip} de ${username}?`)) {
+async function banUser(ip, username) {
+  const confirmed = await showCustomConfirm({
+    title: 'Banear IP',
+    subtitle: `¿Banear la IP de ${username}?`,
+    body: `IP: ${ip}\n\nEsta IP no podrá conectarse al chat.`,
+    type: 'danger',
+    icon: '⛔',
+    confirmText: 'Banear',
+    confirmClass: 'danger'
+  });
+  if (confirmed) {
     socket.emit('adminBan', { ip, username });
     autoLogDatabaseRecord(`IP Baneada: ${ip}`, `Usuario: ${username}`, 'notas');
   }
 }
 
-function unbanIp(ip) {
-  if (confirm(`¿Desbanear la IP ${ip}?`)) {
+async function unbanIp(ip) {
+  const confirmed = await showCustomConfirm({
+    title: 'Desbanear IP',
+    subtitle: `¿Desbanear la IP ${ip}?`,
+    body: 'Esta IP podrá conectarse nuevamente al chat.',
+    type: 'success',
+    icon: '✅',
+    confirmText: 'Desbanear',
+    confirmClass: 'success'
+  });
+  if (confirmed) {
     socket.emit('adminUnban', { ip });
     bannedIps = bannedIps.filter(i => i !== ip);
     saveState(STORAGE_KEYS.bannedIps, bannedIps);
@@ -607,21 +702,31 @@ function confirmChangeAdminPassword() {
   showToast('Contraseña actualizada', 'success');
 }
 
-function changeUserRole(userId, newRole) {
+async function changeUserRole(userId, newRole) {
   if (!newRole) return;
-  if (confirm(`¿Cambiar rol a ${newRole}?`)) {
+  const confirmed = await showCustomConfirm({
+    title: 'Cambiar rol',
+    subtitle: `¿Cambiar rol a ${newRole}?`,
+    type: 'info',
+    icon: '👑',
+    confirmText: 'Cambiar rol'
+  });
+  if (confirmed) {
     socket.emit('changeUserRole', { userId, newRole });
   }
 }
 
-function demoteAdmin(userId, username) {
-  if (typeof userId === 'string' && !userId.includes('-')) {
-    if (confirm(`¿Remover permisos de administrador de ${username}?`)) {
-      socket.emit('demoteAdmin', { userId });
-    }
-    return;
-  }
-  if (confirm(`¿Remover permisos de administrador de ${username}?`)) {
+async function demoteAdmin(userId, username) {
+  const confirmed = await showCustomConfirm({
+    title: 'Remover administrador',
+    subtitle: `¿Remover permisos de ${username}?`,
+    body: 'Este usuario perderá todos sus privilegios de administrador.',
+    type: 'warning',
+    icon: '⚠️',
+    confirmText: 'Remover',
+    confirmClass: 'warning'
+  });
+  if (confirmed) {
     socket.emit('demoteAdmin', { userId });
   }
 }
@@ -642,8 +747,17 @@ startChatBtn.addEventListener('click', () => {
   autoLogDatabaseRecord('Chat Iniciado', `Iniciado el ${new Date().toLocaleString('es-ES')}`, 'config');
 });
 
-stopChatBtn.addEventListener('click', () => {
-  if (confirm('¿Parar el chat? Los usuarios podrán ver un mensaje.')) {
+stopChatBtn.addEventListener('click', async () => {
+  const confirmed = await showCustomConfirm({
+    title: 'Pausar chat',
+    subtitle: '¿Detener el chat?',
+    body: 'Los usuarios verán un mensaje indicando que el chat está pausado y no podrán enviar mensajes.',
+    type: 'warning',
+    icon: '⏸️',
+    confirmText: 'Pausar chat',
+    confirmClass: 'warning'
+  });
+  if (confirmed) {
     socket.emit('adminStopChat');
     autoLogDatabaseRecord('Chat Pausado', `Pausado el ${new Date().toLocaleString('es-ES')}`, 'config');
   }
@@ -922,8 +1036,16 @@ function addBadWord() {
   showToast(`Palabra "${word}" agregada al filtro`, 'success');
 }
 
-function removeBadWord(word) {
-  if (confirm(`¿Eliminar "${word}" del filtro?`)) {
+async function removeBadWord(word) {
+  const confirmed = await showCustomConfirm({
+    title: 'Eliminar palabra',
+    subtitle: `¿Eliminar "${word}" del filtro?`,
+    body: 'Esta palabra ya no será bloqueada en los mensajes.',
+    type: 'info',
+    icon: '🗑️',
+    confirmText: 'Eliminar'
+  });
+  if (confirmed) {
     socket.emit('removeFilteredWord', word);
     showToast(`Palabra "${word}" eliminada`, 'success');
   }
@@ -975,10 +1097,17 @@ function loadRoomsList() {
   });
 }
 
-function deleteRoom(roomName) {
-  if (!confirm(`¿Estás seguro de eliminar la sala "${roomName}"?\n\nLos usuarios serán movidos a la sala global.`)) {
-    return;
-  }
+async function deleteRoom(roomName) {
+  const confirmed = await showCustomConfirm({
+    title: 'Eliminar sala',
+    subtitle: `¿Eliminar la sala "${roomName}"?`,
+    body: 'Los usuarios conectados serán movidos automáticamente a la sala global.',
+    type: 'danger',
+    icon: '🗑️',
+    confirmText: 'Eliminar sala',
+    confirmClass: 'danger'
+  });
+  if (!confirmed) return;
   
   socket.emit('deleteRoom', { room: roomName }, (response) => {
     if (response.success) {
@@ -1222,8 +1351,17 @@ function editDatabaseRecord(id, key) {
   });
 }
 
-function deleteDatabaseRecord(id, key) {
-  if (!confirm(`¿Eliminar el registro "${key}"?`)) return;
+async function deleteDatabaseRecord(id, key) {
+  const confirmed = await showCustomConfirm({
+    title: 'Eliminar registro',
+    subtitle: `¿Eliminar "${key}"?`,
+    body: 'Esta acción no se puede deshacer.',
+    type: 'danger',
+    icon: '🗑️',
+    confirmText: 'Eliminar',
+    confirmClass: 'danger'
+  });
+  if (!confirmed) return;
   
   socket.emit('deleteDatabaseRecord', { id }, (response) => {
     if (response.success) {
