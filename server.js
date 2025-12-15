@@ -15,13 +15,13 @@ const connectedUsers = new Map(); // socketId -> { id, username, ip, room, socke
 const bannedIps = new Set();
 const roomsList = new Set(['global', 'ayudas', 'reglas']);
 let chatRunning = true;
-let adminPassword = 'linda1102'; // Contraseña por defecto
+let adminPassword = 'Dueno'; // Contraseña por defecto
 
 // Salas especiales
 const adminWriteRooms = new Set(['ayudas']);
 const rulesRoomName = 'reglas';
 const roomPasswords = new Map(); // room -> password
-let rulesText = 'Bienvenido. Agrega las reglas desde el panel admin para que todos las vean.';
+let rulesText = '1. No spam.\n2. Sé respetuoso.\n3. No compartir información personal.';
 
 // Persistencia de datos
 const DATA_FILE = path.join(__dirname, 'chat-data.json');
