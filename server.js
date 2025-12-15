@@ -34,7 +34,8 @@ function saveData() {
     rooms: Array.from(roomsList),
     roomPasswords: Array.from(roomPasswords.entries()),
     bannedIps: Array.from(bannedIps),
-    badWords: Array.from(badWords)
+    badWords: Array.from(badWords),
+    registeredAdmins: Array.from(registeredAdmins.entries())
   };
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -64,6 +65,12 @@ function loadData() {
       if (data.badWords) {
         badWords.clear();
         data.badWords.forEach(word => badWords.add(word));
+      }
+      if (data.registeredAdmins) {
+        // Cargar admins guardados, pero mantener Dueno como fallback
+        data.registeredAdmins.forEach(([username, adminData]) => {
+          registeredAdmins.set(username, adminData);
+        });
       }
       console.log('Datos cargados desde archivo:', data);
     }
@@ -562,9 +569,17 @@ socket.on('adminSetPassword', ({ password }) => {
     
     if (!adminId || !password || password.length < 6) return;
     
-    adminPasswords.set(adminId, password);
-    console.log(`Contraseña establecida para admin: ${adminId}`);
-    io.emit('adminPasswordUpdated', { adminId });
+    // Buscar el admin en registeredAdmins (adminId es el username)
+    if (registeredAdmins.has(adminId)) {
+      const adminData = registeredAdmins.get(adminId);
+      adminData.password = password;
+      registeredAdmins.set(adminId, adminData);
+      saveData(); // Persistir el cambio
+      console.log(`Contraseña actualizada para admin: ${adminId}`);
+      io.emit('adminPasswordUpdated', { adminId });
+    } else {
+      console.log(`Admin no encontrado: ${adminId}`);
+    }
   });
 
   // Cambiar rol de usuario
@@ -726,6 +741,7 @@ socket.on('adminSetPassword', ({ password }) => {
     }
 
     registeredAdmins.set(username, { role, password: password || null });
+    saveData(); // Persistir el nuevo admin
     console.log(`Admin registrado: ${username} con rol ${role}`);
 
     const rolesArray = ['Mod Junior', 'Mod', 'Admin', 'Dueño'];
@@ -753,6 +769,7 @@ socket.on('adminSetPassword', ({ password }) => {
       targetSocket.adminRole = role || roles.MOD_JUNIOR;
       adminUsers.set(userId, { username: targetSocket.username, role: targetSocket.adminRole });
       registeredAdmins.set(targetSocket.username, { role: targetSocket.adminRole });
+      saveData(); // Persistir el cambio
       io.to('admin').emit('userPromoted', { userId, username: targetSocket.username, role: targetSocket.adminRole });
       console.log(`${targetSocket.username} promovido a ${targetSocket.adminRole}`);
     }
@@ -765,6 +782,7 @@ socket.on('adminSetPassword', ({ password }) => {
     // Si userId es un nombre de usuario (string sin guiones), buscar en registeredAdmins
     if (typeof userId === 'string' && !userId.includes('-')) {
       registeredAdmins.delete(userId);
+      saveData(); // Persistir el cambio
       io.to('admin').emit('userDemoted', { userId, username: userId });
       console.log(`${userId} removido de administradores registrados`);
       return;
@@ -776,6 +794,7 @@ socket.on('adminSetPassword', ({ password }) => {
       targetSocket.adminRole = null;
       adminUsers.delete(userId);
       registeredAdmins.delete(targetSocket.username);
+      saveData(); // Persistir el cambio
       io.to('admin').emit('userDemoted', { userId, username: targetSocket.username });
       console.log(`${targetSocket.username} removido de administradores`);
     }
