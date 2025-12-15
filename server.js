@@ -3,12 +3,41 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ===== CONEXIÓN A MONGODB =====
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://scamren559_db_user:oaIPyyDdysVijYlZ@chatgeneral.zjsbodx.mongodb.net/chatgeneral?retryWrites=true&w=majority';
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ Conectado a MongoDB Atlas'))
+  .catch(err => console.error('❌ Error conectando a MongoDB:', err));
+
+// ===== ESQUEMAS DE MONGODB =====
+const chatDataSchema = new mongoose.Schema({
+  key: { type: String, unique: true, default: 'main' },
+  rulesText: { type: String, default: '1. No spam.\n2. Sé respetuoso.\n3. No compartir información personal.' },
+  rooms: [String],
+  roomPasswords: { type: Map, of: String },
+  bannedIps: [String],
+  badWords: [String],
+  registeredAdmins: { type: Map, of: Object }
+}, { timestamps: true });
+
+const userDatabaseSchema = new mongoose.Schema({
+  key: String,
+  value: String,
+  category: { type: String, default: 'general' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const ChatData = mongoose.model('ChatData', chatDataSchema);
+const UserDatabase = mongoose.model('UserDatabase', userDatabaseSchema);
 
 // State
 const connectedUsers = new Map(); // socketId -> { id, username, ip, room, socketId, ... }
@@ -23,40 +52,67 @@ const rulesRoomName = 'reglas';
 const roomPasswords = new Map(); // room -> password
 let rulesText = '1. No spam.\n2. Sé respetuoso.\n3. No compartir información personal.';
 
-// Persistencia de datos
+// Persistencia de datos (archivos locales como fallback)
 const DATA_FILE = path.join(__dirname, 'chat-data.json');
 const DATABASE_FILE = path.join(__dirname, 'user-database.json');
 let userDatabase = [];
 
-function saveData() {
-  const data = {
-    rulesText,
-    rooms: Array.from(roomsList),
-    roomPasswords: Array.from(roomPasswords.entries()),
-    bannedIps: Array.from(bannedIps),
-    badWords: Array.from(badWords),
-    registeredAdmins: Array.from(registeredAdmins.entries())
-  };
+// ===== FUNCIONES DE MONGODB =====
+async function saveData() {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
-    console.log('Datos guardados correctamente');
+    const data = {
+      key: 'main',
+      rulesText,
+      rooms: Array.from(roomsList),
+      roomPasswords: Object.fromEntries(roomPasswords),
+      bannedIps: Array.from(bannedIps),
+      badWords: Array.from(badWords),
+      registeredAdmins: Object.fromEntries(registeredAdmins)
+    };
+    
+    await ChatData.findOneAndUpdate(
+      { key: 'main' },
+      data,
+      { upsert: true, new: true }
+    );
+    console.log('✅ Datos guardados en MongoDB');
   } catch (err) {
-    console.error('Error al guardar datos:', err);
+    console.error('❌ Error guardando en MongoDB:', err);
+    // Fallback a archivo local
+    try {
+      const localData = {
+        rulesText,
+        rooms: Array.from(roomsList),
+        roomPasswords: Array.from(roomPasswords.entries()),
+        bannedIps: Array.from(bannedIps),
+        badWords: Array.from(badWords),
+        registeredAdmins: Array.from(registeredAdmins.entries())
+      };
+      fs.writeFileSync(DATA_FILE, JSON.stringify(localData, null, 2), 'utf8');
+      console.log('📁 Datos guardados en archivo local (fallback)');
+    } catch (fileErr) {
+      console.error('Error al guardar archivo local:', fileErr);
+    }
   }
 }
 
-function loadData() {
+async function loadData() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    const data = await ChatData.findOne({ key: 'main' });
+    
+    if (data) {
       if (data.rulesText) rulesText = data.rulesText;
-      if (data.rooms) {
+      if (data.rooms && data.rooms.length > 0) {
         roomsList.clear();
         data.rooms.forEach(r => roomsList.add(r));
       }
       if (data.roomPasswords) {
         roomPasswords.clear();
-        data.roomPasswords.forEach(([room, pass]) => roomPasswords.set(room, pass));
+        if (data.roomPasswords instanceof Map) {
+          data.roomPasswords.forEach((pass, room) => roomPasswords.set(room, pass));
+        } else {
+          Object.entries(data.roomPasswords).forEach(([room, pass]) => roomPasswords.set(room, pass));
+        }
       }
       if (data.bannedIps) {
         bannedIps.clear();
@@ -67,42 +123,94 @@ function loadData() {
         data.badWords.forEach(word => badWords.add(word));
       }
       if (data.registeredAdmins) {
-        // Cargar admins guardados, pero mantener Dueno como fallback
-        data.registeredAdmins.forEach(([username, adminData]) => {
-          registeredAdmins.set(username, adminData);
-        });
+        if (data.registeredAdmins instanceof Map) {
+          data.registeredAdmins.forEach((adminData, username) => {
+            registeredAdmins.set(username, adminData);
+          });
+        } else {
+          Object.entries(data.registeredAdmins).forEach(([username, adminData]) => {
+            registeredAdmins.set(username, adminData);
+          });
+        }
       }
-      console.log('Datos cargados desde archivo:', data);
+      console.log('✅ Datos cargados desde MongoDB');
+    } else {
+      console.log('📝 No hay datos en MongoDB, usando valores por defecto');
+      // Guardar datos iniciales
+      await saveData();
     }
   } catch (err) {
-    console.error('Error al cargar datos:', err);
+    console.error('❌ Error cargando desde MongoDB:', err);
+    // Fallback a archivo local
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        const localData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        if (localData.rulesText) rulesText = localData.rulesText;
+        if (localData.rooms) {
+          roomsList.clear();
+          localData.rooms.forEach(r => roomsList.add(r));
+        }
+        if (localData.roomPasswords) {
+          roomPasswords.clear();
+          localData.roomPasswords.forEach(([room, pass]) => roomPasswords.set(room, pass));
+        }
+        if (localData.bannedIps) {
+          bannedIps.clear();
+          localData.bannedIps.forEach(ip => bannedIps.add(ip));
+        }
+        if (localData.badWords) {
+          badWords.clear();
+          localData.badWords.forEach(word => badWords.add(word));
+        }
+        if (localData.registeredAdmins) {
+          localData.registeredAdmins.forEach(([username, adminData]) => {
+            registeredAdmins.set(username, adminData);
+          });
+        }
+        console.log('📁 Datos cargados desde archivo local (fallback)');
+      }
+    } catch (fileErr) {
+      console.error('Error al cargar archivo local:', fileErr);
+    }
   }
 }
 
-// Cargar datos al iniciar
-loadData();
-loadUserDatabase();
+// Cargar datos cuando MongoDB esté conectado
+mongoose.connection.once('open', async () => {
+  await loadData();
+  await loadUserDatabase();
+});
 
-function saveUserDatabase() {
+async function saveUserDatabase() {
+  // Los registros de UserDatabase se guardan individualmente
+  console.log('Base de datos de usuarios sincronizada');
+}
+
+async function loadUserDatabase() {
   try {
-    fs.writeFileSync(DATABASE_FILE, JSON.stringify(userDatabase, null, 2), 'utf8');
-    console.log('Base de datos guardada correctamente');
+    const records = await UserDatabase.find({});
+    userDatabase = records.map(r => ({
+      _id: r._id.toString(),
+      key: r.key,
+      value: r.value,
+      category: r.category,
+      createdAt: r.createdAt
+    }));
+    console.log('✅ Base de datos cargada:', userDatabase.length, 'registros');
   } catch (err) {
-    console.error('Error al guardar base de datos:', err);
-  }
-}
-
-function loadUserDatabase() {
-  try {
-    if (fs.existsSync(DATABASE_FILE)) {
-      userDatabase = JSON.parse(fs.readFileSync(DATABASE_FILE, 'utf8'));
-      console.log('Base de datos cargada:', userDatabase.length, 'registros');
-    } else {
+    console.error('❌ Error cargando base de datos:', err);
+    // Fallback
+    try {
+      if (fs.existsSync(DATABASE_FILE)) {
+        userDatabase = JSON.parse(fs.readFileSync(DATABASE_FILE, 'utf8'));
+        console.log('📁 Base de datos cargada desde archivo local');
+      } else {
+        userDatabase = [];
+      }
+    } catch (fileErr) {
+      console.error('Error al cargar base de datos:', fileErr);
       userDatabase = [];
     }
-  } catch (err) {
-    console.error('Error al cargar base de datos:', err);
-    userDatabase = [];
   }
 }
 
@@ -902,68 +1010,110 @@ socket.on('adminSetPassword', ({ password }) => {
     socket.leave('live-monitor');
   });
 
-  // ===== BASE DE DATOS PERSONAL =====
-  socket.on('addDatabaseRecord', ({ key, value, category }, cb) => {
+  // ===== BASE DE DATOS PERSONAL (MongoDB) =====
+  socket.on('addDatabaseRecord', async ({ key, value, category }, cb) => {
     if (!socket.isAdmin) {
       cb && cb({ success: false, message: 'Acceso denegado' });
       return;
     }
     
-    const record = {
-      _id: Date.now().toString(),
-      key: String(key).trim().substring(0, 100),
-      value: String(value).trim().substring(0, 500),
-      category: String(category || 'general').substring(0, 50),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    userDatabase.push(record);
-    saveUserDatabase();
-    
-    cb && cb({ success: true, record });
-    io.to('admin').emit('databaseRecords', userDatabase);
+    try {
+      const record = new UserDatabase({
+        key: String(key).trim().substring(0, 100),
+        value: String(value).trim().substring(0, 500),
+        category: String(category || 'general').substring(0, 50)
+      });
+      
+      await record.save();
+      
+      // Actualizar lista local
+      userDatabase.push({
+        _id: record._id.toString(),
+        key: record.key,
+        value: record.value,
+        category: record.category,
+        createdAt: record.createdAt
+      });
+      
+      cb && cb({ success: true, record });
+      io.to('admin').emit('databaseRecords', userDatabase);
+    } catch (err) {
+      console.error('Error agregando registro:', err);
+      cb && cb({ success: false, message: 'Error al guardar' });
+    }
   });
 
-  socket.on('getDatabaseRecords', (cb) => {
+  socket.on('getDatabaseRecords', async (cb) => {
     if (!socket.isAdmin) {
       cb && cb({ success: false, records: [] });
       return;
     }
-    cb && cb({ success: true, records: userDatabase });
+    
+    try {
+      const records = await UserDatabase.find({}).sort({ createdAt: -1 });
+      userDatabase = records.map(r => ({
+        _id: r._id.toString(),
+        key: r.key,
+        value: r.value,
+        category: r.category,
+        createdAt: r.createdAt
+      }));
+      cb && cb({ success: true, records: userDatabase });
+    } catch (err) {
+      console.error('Error obteniendo registros:', err);
+      cb && cb({ success: true, records: userDatabase });
+    }
   });
 
-  socket.on('updateDatabaseRecord', ({ id, value }, cb) => {
+  socket.on('updateDatabaseRecord', async ({ id, value }, cb) => {
     if (!socket.isAdmin) {
       cb && cb({ success: false });
       return;
     }
     
-    const record = userDatabase.find(r => r._id === id);
-    if (record) {
-      record.value = String(value).trim().substring(0, 500);
-      record.updatedAt = new Date().toISOString();
-      saveUserDatabase();
-      cb && cb({ success: true });
-      io.to('admin').emit('databaseRecords', userDatabase);
-    } else {
+    try {
+      const record = await UserDatabase.findByIdAndUpdate(
+        id,
+        { value: String(value).trim().substring(0, 500) },
+        { new: true }
+      );
+      
+      if (record) {
+        // Actualizar lista local
+        const localRecord = userDatabase.find(r => r._id === id);
+        if (localRecord) {
+          localRecord.value = record.value;
+        }
+        cb && cb({ success: true });
+        io.to('admin').emit('databaseRecords', userDatabase);
+      } else {
+        cb && cb({ success: false });
+      }
+    } catch (err) {
+      console.error('Error actualizando registro:', err);
       cb && cb({ success: false });
     }
   });
 
-  socket.on('deleteDatabaseRecord', ({ id }, cb) => {
+  socket.on('deleteDatabaseRecord', async ({ id }, cb) => {
     if (!socket.isAdmin) {
       cb && cb({ success: false });
       return;
     }
     
-    const index = userDatabase.findIndex(r => r._id === id);
-    if (index !== -1) {
-      userDatabase.splice(index, 1);
-      saveUserDatabase();
+    try {
+      await UserDatabase.findByIdAndDelete(id);
+      
+      // Actualizar lista local
+      const index = userDatabase.findIndex(r => r._id === id);
+      if (index !== -1) {
+        userDatabase.splice(index, 1);
+      }
+      
       cb && cb({ success: true });
       io.to('admin').emit('databaseRecords', userDatabase);
-    } else {
+    } catch (err) {
+      console.error('Error eliminando registro:', err);
       cb && cb({ success: false });
     }
   });
@@ -979,5 +1129,4 @@ server.listen(PORT, () => {
     console.log(`  - ${username}: ${data.role}`);
   });
   console.log('=========================');
-});
-
+})
