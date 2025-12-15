@@ -125,6 +125,30 @@ Se registran automáticamente:
 - Animaciones suaves
 
 ### 💾 Persistencia de Datos
+
+#### 🗄️ Base de Datos MongoDB Atlas
+El proyecto utiliza **MongoDB Atlas** como base de datos en la nube para garantizar que toda la información se guarde permanentemente, incluso después de reiniciar el servidor.
+
+**Datos que se guardan en MongoDB:**
+- ✅ Reglas del chat
+- ✅ Administradores y sus contraseñas
+- ✅ IPs baneadas
+- ✅ Salas y contraseñas de salas
+- ✅ Palabras filtradas
+- ✅ Registros de la base de datos personal
+
+**Configuración:**
+1. Crear cuenta en [MongoDB Atlas](https://cloud.mongodb.com)
+2. Crear un cluster gratuito (M0)
+3. Configurar acceso de red (permitir `0.0.0.0/0`)
+4. Crear usuario de base de datos
+5. Agregar variable de entorno en el servidor:
+   ```
+   MONGODB_URI=mongodb+srv://usuario:contraseña@cluster.mongodb.net/chatgeneral
+   ```
+
+#### 📁 Almacenamiento Local (Fallback)
+Si MongoDB no está disponible, el sistema usa archivos locales como respaldo:
 - **Cliente (chat.js)**: Perfil, sala actual, contraseñas de salas, colores
 - **Servidor (chat-data.json)**: Reglas, salas, contraseñas, IPs baneadas, palabras filtradas
 - **Servidor (user-database.json)**: Base de datos personal de administración
