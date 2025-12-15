@@ -932,6 +932,13 @@ window.addBadWord = addBadWord;
 window.removeBadWord = removeBadWord;
 window.loadBadWords = loadBadWords;
 
+// Exponer funciones de modal de administradores globalmente
+window.openAdminPasswordModal = openAdminPasswordModal;
+window.closeAdminPasswordModal = closeAdminPasswordModal;
+window.confirmChangeAdminPassword = confirmChangeAdminPassword;
+window.demoteAdmin = demoteAdmin;
+window.changeUserRole = changeUserRole;
+
 // ===== MONITOREO EN VIVO =====
 let isMonitoring = false;
 
