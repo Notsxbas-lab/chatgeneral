@@ -4,10 +4,30 @@ const path = require('path');
 const fs = require('fs');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Configurar CORS para permitir conexiones desde GitHub Pages
+const allowedOrigins = [
+  'https://notsxbas-lab.github.io',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
