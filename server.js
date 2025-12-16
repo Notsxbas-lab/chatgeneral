@@ -19,7 +19,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5500',
-  'http://127.0.0.1:5500'
+  'http://127.0.0.1:5500',
+  'https://chatgeneral-ul1z.onrender.com'
 ];
 
 // Agregar orígenes adicionales desde variable de entorno (separados por coma)
