@@ -9,27 +9,88 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 
-// Configurar CORS para permitir conexiones desde GitHub Pages
+// Configurar CORS para permitir conexiones desde GitHub Pages y Panel Admin
 const allowedOrigins = [
   'https://notsxbas-lab.github.io',
   'http://localhost:3000',
-  'http://127.0.0.1:3000'
+  'http://127.0.0.1:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500'
 ];
 
+// Agregar orígenes adicionales desde variable de entorno (separados por coma)
+if (process.env.ALLOWED_ORIGINS) {
+  process.env.ALLOWED_ORIGINS.split(',').forEach(origin => {
+    const trimmed = origin.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
+console.log('🔐 Orígenes permitidos:', allowedOrigins);
+
+// Función para verificar origen (soporta subdirectorios de GitHub Pages)
+function checkOrigin(origin, callback) {
+  // Permitir requests sin origen (como apps móviles o Postman)
+  if (!origin) {
+    return callback(null, true);
+  }
+  
+  // Verificar si el origen está en la lista permitida
+  if (allowedOrigins.some(allowed => origin === allowed || origin.startsWith(allowed))) {
+    return callback(null, true);
+  }
+  
+  // Si el origen es de GitHub Pages del usuario, permitir
+  if (origin.startsWith('https://notsxbas-lab.github.io')) {
+    return callback(null, true);
+  }
+  
+  console.log('❌ Origen bloqueado:', origin);
+  callback(new Error('CORS no permitido'), false);
+}
+
 app.use(cors({
-  origin: allowedOrigins,
+  origin: checkOrigin,
   credentials: true
 }));
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: checkOrigin,
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ===== ENDPOINTS API =====
+
+// Health check - para verificar que el servidor está activo
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoConnected ? 'connected' : 'disconnected',
+    chatRunning: chatRunning
+  });
+});
+
+// Status del servidor - información básica
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'online',
+    version: '1.0.0',
+    uptime: process.uptime(),
+    mongodb: mongoConnected,
+    chatEnabled: chatRunning,
+    connectedUsers: connectedUsers.size,
+    rooms: Array.from(roomsList)
+  });
+});
 
 // ===== CONEXIÓN A MONGODB =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://scamren559_db_user:oaIPyyDdysVijYlZ@chatgeneral.zjsbodx.mongodb.net/chatgeneral?retryWrites=true&w=majority';
