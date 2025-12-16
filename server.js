@@ -12,6 +12,10 @@ const server = http.createServer(app);
 // Configurar CORS para permitir conexiones desde GitHub Pages y Panel Admin
 const allowedOrigins = [
   'https://notsxbas-lab.github.io',
+  'http://chatgeneral.me',
+  'https://chatgeneral.me',
+  'http://www.chatgeneral.me',
+  'https://www.chatgeneral.me',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5500',
@@ -47,8 +51,24 @@ function checkOrigin(origin, callback) {
     return callback(null, true);
   }
   
+  // Permitir cualquier subdirectorio de chatgeneral.me
+  if (origin.includes('chatgeneral.me')) {
+    return callback(null, true);
+  }
+  
   console.log('❌ Origen bloqueado:', origin);
   callback(new Error('CORS no permitido'), false);
+}
+
+// Función para Socket.IO CORS (retorna booleano simple)
+function checkSocketOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.some(allowed => origin === allowed || origin.startsWith(allowed))) return true;
+  if (origin.startsWith('https://notsxbas-lab.github.io')) return true;
+  // Permitir cualquier subdirectorio de chatgeneral.me
+  if (origin.includes('chatgeneral.me')) return true;
+  console.log('❌ Socket origen bloqueado:', origin);
+  return false;
 }
 
 app.use(cors({
@@ -58,7 +78,9 @@ app.use(cors({
 
 const io = new Server(server, {
   cors: {
-    origin: checkOrigin,
+    origin: (origin, callback) => {
+      callback(null, checkSocketOrigin(origin));
+    },
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -66,31 +88,6 @@ const io = new Server(server, {
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// ===== ENDPOINTS API =====
-
-// Health check - para verificar que el servidor está activo
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    mongodb: mongoConnected ? 'connected' : 'disconnected',
-    chatRunning: chatRunning
-  });
-});
-
-// Status del servidor - información básica
-app.get('/api/status', (req, res) => {
-  res.json({
-    status: 'online',
-    version: '1.0.0',
-    uptime: process.uptime(),
-    mongodb: mongoConnected,
-    chatEnabled: chatRunning,
-    connectedUsers: connectedUsers.size,
-    rooms: Array.from(roomsList)
-  });
-});
 
 // ===== CONEXIÓN A MONGODB =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://scamren559_db_user:oaIPyyDdysVijYlZ@chatgeneral.zjsbodx.mongodb.net/chatgeneral?retryWrites=true&w=majority';
@@ -175,6 +172,31 @@ let rulesText = '1. No spam.\n2. Sé respetuoso.\n3. No compartir información p
 const DATA_FILE = path.join(__dirname, 'chat-data.json');
 const DATABASE_FILE = path.join(__dirname, 'user-database.json');
 let userDatabase = [];
+
+// ===== ENDPOINTS API =====
+
+// Health check - para verificar que el servidor está activo
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoConnected ? 'connected' : 'disconnected',
+    chatRunning: chatRunning
+  });
+});
+
+// Status del servidor - información básica
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'online',
+    version: '1.0.0',
+    uptime: process.uptime(),
+    mongodb: mongoConnected,
+    chatEnabled: chatRunning,
+    connectedUsers: connectedUsers.size,
+    rooms: Array.from(roomsList)
+  });
+});
 
 // ===== FUNCIONES DE MONGODB =====
 async function saveData() {
