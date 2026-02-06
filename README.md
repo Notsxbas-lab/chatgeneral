@@ -7,7 +7,7 @@ Chat en tiempo real con panel administrativo completo.
 1. Ejecuta `chatgeneral/run-server-portable.bat`.
 2. Abre `http://localhost:3000`.
 
-Admin: contraseña `linda1102`.
+Admin: contraseña `Elije la que tu quieras cambiala en el codigo`.
 
 ## Arranque rápido (Node instalado)
 
